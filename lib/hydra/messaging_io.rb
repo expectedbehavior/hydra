@@ -14,15 +14,11 @@ module Hydra #:nodoc:
           message = @reader.gets
           puts "#{Process.pid} GOT MESSAGE: #{message}"
           return nil unless message
-          return nil if message !~ /^\s*\{/
-          return nil if message =~ /^\s*Gem::SourceIndex/
-          return nil if message =~ /^\s*Ensure block at/
-          return nil if message =~ /^\s*When the notification processors run/
-          return nil if message =~ /^\s*Given I make a resign move/
+          return nil if message !~ /^\s*(\{|\.)/ # must start with { or .
           return Message.build(eval(message.chomp))
         rescue SyntaxError, NameError
           # uncomment to help catch remote errors by seeing all traffic
-          #$stderr.write "Not a message: [#{message.inspect}]\n"
+          $stderr.write "Not a message: [#{message.inspect}]\n"
         end
       end
     end
