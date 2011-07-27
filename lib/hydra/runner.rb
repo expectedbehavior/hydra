@@ -23,7 +23,49 @@ module Hydra #:nodoc:
       trace 'Creating test database'
       ENV['TEST_ENV_NUMBER'] = Process.pid.to_s
       begin
-        Rake::Task['db:reset'].invoke        
+        Rake::Task['db:drop'].invoke        
+        Rake::Task['db:create:all'].invoke        
+#         trace ``
+        
+        old_env = ENV['RAILS_ENV']
+        ENV['RAILS_ENV'] = "development"
+        cmd = "rake db:test:clone_structure --trace"
+        trace `#{cmd}`
+        ENV['RAILS_ENV'] = old_env
+        require 'tempfile'
+        @redis_pid = Process.fork do
+          @redis_pid = Process.pid
+          i = (@redis_pid % 50_000) + 10_000
+#           i = 6379
+#           1000.times do
+#             i += 1
+            cmd = "echo 'port #{i}' | redis-server -"
+            puts "running: #{cmd}"
+            system cmd
+#           end
+          Process.exit!
+        end
+        ENV['REDIS_PORT'] = (@redis_pid % 50_000) + 10_000
+        
+        @memcached_pid = Process.fork do
+          @memcached_pid = Process.pid
+          i = (@memcached_pid % 50_000) + 10_000
+#           i = 11211
+#           1000.times do
+#             i += 1
+            system "memcached -vvvp #{i}"
+#           end
+          Process.exit!
+        end
+        ENV['MEMCACHED_PORT'] = (@memcached_pid % 50_000) + 10_000
+        
+        at_exit do
+          puts "Killing forks ================================================================"
+          Process.kill("TERM", @redis_pid)
+          Process.kill("TERM", @memcached_pid)
+          puts "Killed forks ================================================================"
+        end
+        
       rescue Exception => e
         trace "Error creating test DB: #{e}"
       end
@@ -132,23 +174,41 @@ module Hydra #:nodoc:
       rescue LoadError => ex
         return ex.to_s
       end
-      hydra_output = StringIO.new
-      Spec::Runner.options.instance_variable_set(:@formatters, [
-        Spec::Runner::Formatter::HydraFormatter.new(
-          Spec::Runner.options.formatter_options,
-          hydra_output
-        )
-      ])
-      Spec::Runner.options.instance_variable_set(
-        :@example_groups, []
-      )
-      Spec::Runner.options.instance_variable_set(
-        :@files, [file]
-      )
-      Spec::Runner.options.instance_variable_set(
-        :@files_loaded, false
-      )
-      Spec::Runner.options.run_examples
+      
+      hydra_output = Tempfile.new("hydra")
+      log_file = hydra_output.path
+      old_env = ENV['RAILS_ENV']
+      ENV['RAILS_ENV'] = "test"
+      cmd = "spec --require hydra/spec/hydra_formatter --format Spec::Runner::Formatter::HydraFormatter:#{log_file} #{file}"
+      puts "================================================================================================================================================================================================================================================================running: #{cmd}"
+      trace `#{cmd}`
+      ENV['RAILS_ENV'] = old_env
+#       hydra_output = File.open(log_file)
+      
+      
+#       hydra_output = StringIO.new
+#       Spec::Runner.instance_variable_set(
+#         :@options, nil
+#       )
+#       Spec::Runner.options.instance_variable_set(:@formatters, [
+#         Spec::Runner::Formatter::HydraFormatter.new(
+#           Spec::Runner.options.formatter_options,
+#           hydra_output
+#         )
+#       ])
+#       Spec::Runner.options.instance_variable_set(
+#         :@example_groups, []
+#       )
+#       Spec::Runner.options.instance_variable_set(
+#         :@files, [file]
+#       )
+#       Spec::Runner.options.instance_variable_set(
+#         :@files_loaded, false
+#       )
+#       Spec::Runner.options.run_examples
+      
+      
+      
       hydra_output.rewind
       output = hydra_output.read.chomp
       output = "" if output.gsub("\n","") =~ /^\.*$/
