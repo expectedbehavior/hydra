@@ -45,7 +45,8 @@ module Hydra #:nodoc:
 #           end
           Process.exit!
         end
-        ENV['REDIS_PORT'] = (@redis_pid % 50_000) + 10_000
+        ENV['REDIS_PORT'] = ((@redis_pid % 50_000) + 10_000).to_s
+        trace "runner redis port: #{ENV['REDIS_PORT']}"
         
         @memcached_pid = Process.fork do
           @memcached_pid = Process.pid
@@ -57,7 +58,8 @@ module Hydra #:nodoc:
 #           end
           Process.exit!
         end
-        ENV['MEMCACHED_PORT'] = (@memcached_pid % 50_000) + 10_000
+        ENV['MEMCACHED_PORT'] = ((@memcached_pid % 50_000) + 10_000).to_s
+        trace "runner memcached port: #{ENV['MEMCACHED_PORT']}"
         
         at_exit do
           puts "Killing forks ================================================================"
@@ -68,6 +70,7 @@ module Hydra #:nodoc:
         
       rescue Exception => e
         trace "Error creating test DB: #{e}"
+        raise
       end
       
 
