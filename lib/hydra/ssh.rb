@@ -28,10 +28,13 @@ module Hydra #:nodoc:
     def initialize(connection_options, directory, command)
       puts "sshing..."
       @writer, @reader, @error = popen3("ssh -tt #{connection_options}")
+      @writer.write("echo connected\n")
       puts "mkdir..."
       @writer.write("mkdir -p #{directory}\n")
+      @writer.write("echo mkdired\n")
       puts "cd..."
       @writer.write("cd #{directory}\n")
+      @writer.write("echo cded\n")
       puts "writing command..."
       res = @writer.write(command+"\n")
       puts "written..."
