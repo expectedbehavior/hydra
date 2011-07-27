@@ -29,11 +29,24 @@ module Hydra #:nodoc:
         
         old_env = ENV['RAILS_ENV']
         ENV['RAILS_ENV'] = "development"
-        cmd = "rake db:test:clone_structure --trace"
+#         cmd = "rake db:test:clone_structure --trace"
+        cmd = "rake db:test:load_structure --trace"
         trace `#{cmd}`
         ENV['RAILS_ENV'] = old_env
         require 'tempfile'
-        @redis_pid = Process.fork do
+        
+        
+        r, w = IO.pipe
+        @redis_pid = fork do
+          w.close
+          Thread.new do
+            begin
+              r.read
+            rescue Exception
+              Kernel.exit
+            end
+          end
+          
           @redis_pid = Process.pid
           i = (@redis_pid % 50_000) + 10_000
 #           i = 6379
@@ -41,23 +54,85 @@ module Hydra #:nodoc:
 #             i += 1
             cmd = "echo 'port #{i}' | redis-server -"
             puts "running: #{cmd}"
-            system cmd
+            exec cmd
 #           end
-          Process.exit!
+          
+          
+          exit
         end
+        r.close
+        
+        
+        
+#         require 'slave'
+#         r = Slave.object(:async => true) do 
+#           @redis_pid = Process.pid
+#           i = (@redis_pid % 50_000) + 10_000
+#           cmd = "echo 'port #{i}' | redis-server -"
+#           puts "running: #{cmd}"
+#           system cmd
+#         end
+#         @redis_pid = r.pid
+        
+#         @redis_pid = Process.fork do
+#           @redis_pid = Process.pid
+#           i = (@redis_pid % 50_000) + 10_000
+# #           i = 6379
+# #           1000.times do
+# #             i += 1
+#             cmd = "echo 'port #{i}' | redis-server -"
+#             puts "running: #{cmd}"
+#             system cmd
+# #           end
+#           Process.exit!
+#         end
         ENV['REDIS_PORT'] = ((@redis_pid % 50_000) + 10_000).to_s
         trace "runner redis port: #{ENV['REDIS_PORT']}"
         
-        @memcached_pid = Process.fork do
+        
+        r, w = IO.pipe
+        @memcached_pid = fork do
+          w.close
+          Thread.new do
+            begin
+              r.read
+            rescue Exception
+              Kernel.exit
+            end
+          end
+          
           @memcached_pid = Process.pid
           i = (@memcached_pid % 50_000) + 10_000
 #           i = 11211
 #           1000.times do
 #             i += 1
-            system "memcached -p #{i}"
+            exec "memcached -p #{i}"
 #           end
-          Process.exit!
+          
+          
+          exit
         end
+        r.close
+        
+        
+        
+#         m = Slave.object(:async => true) do 
+#           @memcached_pid = Process.pid
+#           i = (@memcached_pid % 50_000) + 10_000
+#           system "memcached -p #{i}"
+#         end
+#         @memcached_pid = m.pid
+        
+#         @memcached_pid = Process.fork do
+#           @memcached_pid = Process.pid
+#           i = (@memcached_pid % 50_000) + 10_000
+# #           i = 11211
+# #           1000.times do
+# #             i += 1
+#             system "memcached -p #{i}"
+# #           end
+#           Process.exit!
+#         end
         ENV['MEMCACHED_PORT'] = ((@memcached_pid % 50_000) + 10_000).to_s
         trace "runner memcached port: #{ENV['MEMCACHED_PORT']}"
         
