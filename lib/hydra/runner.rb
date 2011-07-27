@@ -54,7 +54,7 @@ module Hydra #:nodoc:
 #           i = 11211
 #           1000.times do
 #             i += 1
-            system "memcached -vvvp #{i}"
+            system "memcached -p #{i}"
 #           end
           Process.exit!
         end
