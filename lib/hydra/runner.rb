@@ -19,6 +19,144 @@ module Hydra #:nodoc:
       @io = opts.fetch(:io) { raise "No IO Object" } 
       @verbose = opts.fetch(:verbose) { false }      
       $stdout.sync = true
+
+      trace 'Creating test database'
+      ENV['TEST_ENV_NUMBER'] = Process.pid.to_s
+      begin
+#         Rake::Task['db:drop'].invoke        
+#         Rake::Task['db:create:all'].invoke        
+#         trace ``
+
+        cmd = <<-CMD
+          rake db:drop
+          rake db:create:all
+        CMD
+        trace `#{cmd}`
+        
+        old_env = ENV['RAILS_ENV']
+        ENV['RAILS_ENV'] = "development"
+#         cmd = "rake db:test:clone_structure --trace"
+        cmd = <<-CMD
+          rake db:test:load_structure --trace
+        CMD
+        trace `#{cmd}`
+        ENV['RAILS_ENV'] = old_env
+        require 'tempfile'
+        
+        
+        r, w = IO.pipe
+        @redis_pid = fork do
+          w.close
+          Thread.new do
+            begin
+              r.read
+            rescue Exception
+              Kernel.exit
+            end
+          end
+          
+          @redis_pid = Process.pid
+          i = (@redis_pid % 50_000) + 10_000
+#           i = 6379
+#           1000.times do
+#             i += 1
+            cmd = "echo 'port #{i}' | redis-server -"
+            puts "running: #{cmd}"
+            exec cmd
+#           end
+          
+          
+          exit
+        end
+        r.close
+        
+        
+        
+#         require 'slave'
+#         r = Slave.object(:async => true) do 
+#           @redis_pid = Process.pid
+#           i = (@redis_pid % 50_000) + 10_000
+#           cmd = "echo 'port #{i}' | redis-server -"
+#           puts "running: #{cmd}"
+#           system cmd
+#         end
+#         @redis_pid = r.pid
+        
+#         @redis_pid = Process.fork do
+#           @redis_pid = Process.pid
+#           i = (@redis_pid % 50_000) + 10_000
+# #           i = 6379
+# #           1000.times do
+# #             i += 1
+#             cmd = "echo 'port #{i}' | redis-server -"
+#             puts "running: #{cmd}"
+#             system cmd
+# #           end
+#           Process.exit!
+#         end
+        ENV['REDIS_PORT'] = ((@redis_pid % 50_000) + 10_000).to_s
+        trace "runner redis port: #{ENV['REDIS_PORT']}"
+        
+        
+        r, w = IO.pipe
+        @memcached_pid = fork do
+          w.close
+          Thread.new do
+            begin
+              r.read
+            rescue Exception
+              Kernel.exit
+            end
+          end
+          
+          @memcached_pid = Process.pid
+          i = (@memcached_pid % 50_000) + 10_000
+#           i = 11211
+#           1000.times do
+#             i += 1
+            exec "memcached -p #{i}"
+#           end
+          
+          
+          exit
+        end
+        r.close
+        
+        
+        
+#         m = Slave.object(:async => true) do 
+#           @memcached_pid = Process.pid
+#           i = (@memcached_pid % 50_000) + 10_000
+#           system "memcached -p #{i}"
+#         end
+#         @memcached_pid = m.pid
+        
+#         @memcached_pid = Process.fork do
+#           @memcached_pid = Process.pid
+#           i = (@memcached_pid % 50_000) + 10_000
+# #           i = 11211
+# #           1000.times do
+# #             i += 1
+#             system "memcached -p #{i}"
+# #           end
+#           Process.exit!
+#         end
+        ENV['MEMCACHED_PORT'] = ((@memcached_pid % 50_000) + 10_000).to_s
+        trace "runner memcached port: #{ENV['MEMCACHED_PORT']}"
+        
+        at_exit do
+          puts "Killing forks ================================================================"
+          Process.kill("TERM", @redis_pid)
+          Process.kill("TERM", @memcached_pid)
+          puts "Killed forks ================================================================"
+        end
+        
+      rescue Exception => e
+        trace "Error creating test DB: #{e}"
+        raise
+      end
+      
+
       trace 'Booted. Sending Request for file'
 
       @io.write RequestFile.new
@@ -53,6 +191,14 @@ module Hydra #:nodoc:
 
     # Stop running
     def stop
+      trace "Dropping test database #{ENV['TEST_ENV_NUMBER']}"
+      ENV['TEST_ENV_NUMBER'] = Process.pid.to_s
+      begin
+        Rake::Task['db:drop'].invoke
+      rescue Exception => e
+        trace "Could not drop test database #{ENV['TEST_ENV_NUMBER']}: #{e}"
+      end
+      
       @running = false
     end
 
@@ -117,27 +263,69 @@ module Hydra #:nodoc:
     # run all the Specs in an RSpec file (NOT IMPLEMENTED)
     def run_rspec_file(file)
       # pull in rspec
-      begin
-        require 'rspec'
-        require 'hydra/spec/hydra_formatter'
-        # Ensure we override rspec's at_exit
-        RSpec::Core::Runner.disable_autorun!
-      rescue LoadError => ex
-        return ex.to_s
-      end
-      hydra_output = StringIO.new
+#       begin
+#         require 'rspec'
+#         require 'hydra/spec/hydra_formatter'
+#         # Ensure we override rspec's at_exit
+#         RSpec::Core::Runner.disable_autorun!
+#       rescue LoadError => ex
+#         return ex.to_s
+#       end
+# <<<<<<< HEAD
+#       hydra_output = StringIO.new
 
-      config = [
-        '-f', 'RSpec::Core::Formatters::HydraFormatter',
-        file
-      ]
+#       config = [
+#         '-f', 'RSpec::Core::Formatters::HydraFormatter',
+#         file
+#       ]
 
-      RSpec.instance_variable_set(:@world, nil)
-      RSpec::Core::Runner.run(config, hydra_output, hydra_output)
+#       RSpec.instance_variable_set(:@world, nil)
+#       RSpec::Core::Runner.run(config, hydra_output, hydra_output)
 
+# =======
+      
+      hydra_output = Tempfile.new("hydra")
+      log_file = hydra_output.path
+      old_env = ENV['RAILS_ENV']
+      ENV['RAILS_ENV'] = "test"
+      cmd = "spec --format Spec::Runner::Formatter::ProgressBarFormatter --require hydra/spec/hydra_formatter --format Spec::Runner::Formatter::HydraFormatter:#{log_file} #{file}"
+      puts "================================================================================================================================================================================================================================================================running: #{cmd}"
+      stdout = `#{cmd}`
+      status = $?
+      trace stdout
+      ENV['RAILS_ENV'] = old_env
+#       hydra_output = File.open(log_file)
+      
+      
+#       hydra_output = StringIO.new
+#       Spec::Runner.instance_variable_set(
+#         :@options, nil
+#       )
+#       Spec::Runner.options.instance_variable_set(:@formatters, [
+#         Spec::Runner::Formatter::HydraFormatter.new(
+#           Spec::Runner.options.formatter_options,
+#           hydra_output
+#         )
+#       ])
+#       Spec::Runner.options.instance_variable_set(
+#         :@example_groups, []
+#       )
+#       Spec::Runner.options.instance_variable_set(
+#         :@files, [file]
+#       )
+#       Spec::Runner.options.instance_variable_set(
+#         :@files_loaded, false
+#       )
+#       Spec::Runner.options.run_examples
+      
+      
+      
+# >>>>>>> my_0.20.0
       hydra_output.rewind
       output = hydra_output.read.chomp
       output = "" if output.gsub("\n","") =~ /^\.*$/
+      
+      output = "FAILURE: command (#{cmd}) exited with #{status.inspect} and produced: #{stdout}" unless status.success?
 
       return output
     end
@@ -157,7 +345,11 @@ module Hydra #:nodoc:
         @cuke_configuration = Cucumber::Cli::Configuration.new(dev_null, dev_null)
         @cuke_configuration.parse!(['features']+files)
 
+# <<<<<<< HEAD
         support_code = Cucumber::Runtime::SupportCode.new(@cuke_runtime, @cuke_configuration.guess?)
+# =======
+#         support_code = Cucumber::Runtime::SupportCode.new(@cuke_runtime, @cuke_configuration)
+# >>>>>>> my_0.20.0
         support_code.load_files!(@cuke_configuration.support_to_load + @cuke_configuration.step_defs_to_load)
         support_code.fire_hook(:after_configuration, @cuke_configuration)
         # i don't like this, but there no access to set the instance of SupportCode in Runtime
