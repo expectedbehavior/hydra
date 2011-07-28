@@ -13,9 +13,11 @@ module Hydra #:nodoc:
       puts "GOT MESSAGE: #{message}"
       return nil unless message # && message =~ /^MESSAGE: /
 #       message = message.sub(/^MESSAGE: /, '')
-      return nil if message =~ /Gem::SourceIndex/
-      return nil if message =~ /Ensure block at/
-      return nil if message =~ /When the notification processors run/
+      return nil if message !~ /^\s*\{/
+      return nil if message =~ /^\s*Gem::SourceIndex/
+      return nil if message =~ /^\s*Ensure block at/
+      return nil if message =~ /^\s*When the notification processors run/
+      return nil if message =~ /^\s*Given I make a resign move/
       return Message.build(eval(message.chomp))
     rescue SyntaxError, NameError
       # uncomment to help catch remote errors by seeing all traffic
