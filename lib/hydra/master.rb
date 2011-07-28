@@ -116,7 +116,7 @@ module Hydra #:nodoc:
         send_file(worker)
       else
         @incomplete_files.delete_at(@incomplete_files.index(message.file))
-        trace "#{@incomplete_files.size} Files Remaining"
+        trace "#{@incomplete_files.size} Files Remaining: #{@incomplete_files.inspect}"
         @event_listeners.each{|l| l.file_end(message.file, message.output) }
         unless message.output == '.'
           @failed_files << message.file

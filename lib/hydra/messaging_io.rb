@@ -14,6 +14,8 @@ module Hydra #:nodoc:
       return nil unless message # && message =~ /^MESSAGE: /
 #       message = message.sub(/^MESSAGE: /, '')
       return nil if message =~ /Gem::SourceIndex/
+      return nil if message =~ /Ensure block at/
+      return nil if message =~ /When the notification processors run/
       return Message.build(eval(message.chomp))
     rescue SyntaxError, NameError
       # uncomment to help catch remote errors by seeing all traffic

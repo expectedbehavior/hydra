@@ -287,8 +287,8 @@ module Hydra #:nodoc:
       hydra_output = Tempfile.new("hydra")
       log_file = hydra_output.path
       old_env = ENV['RAILS_ENV']
-      ENV['RAILS_ENV'] = "test"
-      cmd = "spec --format Spec::Runner::Formatter::ProgressBarFormatter --require hydra/spec/hydra_formatter --format Spec::Runner::Formatter::HydraFormatter:#{log_file} #{file}"
+      ENV.delete('RAILS_ENV')
+      cmd = "bundle exec spec --format Spec::Runner::Formatter::ProgressBarFormatter --require hydra/spec/hydra_formatter --format Spec::Runner::Formatter::HydraFormatter:#{log_file} #{file} 2>&1"
       puts "================================================================================================================================================================================================================================================================running: #{cmd}"
       stdout = `#{cmd}`
       status = $?
@@ -326,6 +326,8 @@ module Hydra #:nodoc:
       output = "" if output.gsub("\n","") =~ /^\.*$/
       
       output = "FAILURE: command (#{cmd}) exited with #{status.inspect} and produced: #{stdout}" unless status.success?
+      hydra_output.close
+      hydra_output.unlink
 
       return output
     end
@@ -334,49 +336,74 @@ module Hydra #:nodoc:
     def run_cucumber_file(file)
 
       files = [file]
-      dev_null = StringIO.new
-      hydra_response = StringIO.new
+      
+      
+      
+      hydra_output = Tempfile.new("hydra")
+      log_file = hydra_output.path
+      old_env = ENV['RAILS_ENV']
+      ENV.delete('RAILS_ENV')
+      cmd = "bundle exec cucumber -P --strict --tags ~@wip --require features/support --require features/step_definitions --format pretty --require #{File.dirname(__FILE__)}/cucumber/formatter.rb --format Cucumber::Formatter::Hydra --out #{log_file} #{file} 2>&1"
+      puts "================================================================================================================================================================================================================================================================running: #{cmd}"
+      stdout = `#{cmd}`
+      status = $?
+      trace stdout
+      ENV['RAILS_ENV'] = old_env
+      
+      
+      
+      
+      
+#       dev_null = StringIO.new
+#       hydra_response = StringIO.new
 
-      unless @cuke_runtime
-        require 'cucumber'
-        require 'hydra/cucumber/formatter'
-        Cucumber.logger.level = Logger::INFO
-        @cuke_runtime = Cucumber::Runtime.new
-        @cuke_configuration = Cucumber::Cli::Configuration.new(dev_null, dev_null)
-        @cuke_configuration.parse!(['features']+files)
+#       unless @cuke_runtime
+#         require 'cucumber'
+#         require 'hydra/cucumber/formatter'
+#         Cucumber.logger.level = Logger::INFO
+#         @cuke_runtime = Cucumber::Runtime.new
+#         @cuke_configuration = Cucumber::Cli::Configuration.new(dev_null, dev_null)
+#         @cuke_configuration.parse!(['features']+files)
 
-# <<<<<<< HEAD
-        support_code = Cucumber::Runtime::SupportCode.new(@cuke_runtime, @cuke_configuration.guess?)
-# =======
-#         support_code = Cucumber::Runtime::SupportCode.new(@cuke_runtime, @cuke_configuration)
-# >>>>>>> my_0.20.0
-        support_code.load_files!(@cuke_configuration.support_to_load + @cuke_configuration.step_defs_to_load)
-        support_code.fire_hook(:after_configuration, @cuke_configuration)
-        # i don't like this, but there no access to set the instance of SupportCode in Runtime
-        @cuke_runtime.instance_variable_set('@support_code',support_code)
-      end
-      cuke_formatter = Cucumber::Formatter::Hydra.new(
-        @cuke_runtime, hydra_response, @cuke_configuration.options
-      )
+# # <<<<<<< HEAD
+#         support_code = Cucumber::Runtime::SupportCode.new(@cuke_runtime, @cuke_configuration.guess?)
+# # =======
+# #         support_code = Cucumber::Runtime::SupportCode.new(@cuke_runtime, @cuke_configuration)
+# # >>>>>>> my_0.20.0
+#         support_code.load_files!(@cuke_configuration.support_to_load + @cuke_configuration.step_defs_to_load)
+#         support_code.fire_hook(:after_configuration, @cuke_configuration)
+#         # i don't like this, but there no access to set the instance of SupportCode in Runtime
+#         @cuke_runtime.instance_variable_set('@support_code',support_code)
+#       end
+#       cuke_formatter = Cucumber::Formatter::Hydra.new(
+#         @cuke_runtime, hydra_response, @cuke_configuration.options
+#       )
 
-      cuke_runner ||= Cucumber::Ast::TreeWalker.new(
-        @cuke_runtime, [cuke_formatter], @cuke_configuration
-      )
-      @cuke_runtime.visitor = cuke_runner
+#       cuke_runner ||= Cucumber::Ast::TreeWalker.new(
+#         @cuke_runtime, [cuke_formatter], @cuke_configuration
+#       )
+#       @cuke_runtime.visitor = cuke_runner
 
-      loader = Cucumber::Runtime::FeaturesLoader.new(
-        files,
-        @cuke_configuration.filters,
-        @cuke_configuration.tag_expression
-      )
-      features = loader.features
-      tag_excess = tag_excess(features, @cuke_configuration.options[:tag_expression].limits)
-      @cuke_configuration.options[:tag_excess] = tag_excess
+#       loader = Cucumber::Runtime::FeaturesLoader.new(
+#         files,
+#         @cuke_configuration.filters,
+#         @cuke_configuration.tag_expression
+#       )
+#       features = loader.features
+#       tag_excess = tag_excess(features, @cuke_configuration.options[:tag_expression].limits)
+#       @cuke_configuration.options[:tag_excess] = tag_excess
 
-      cuke_runner.visit_features(features)
+#       cuke_runner.visit_features(features)
 
-      hydra_response.rewind
-      return hydra_response.read
+#       hydra_response.rewind
+      hydra_output.rewind
+      output = hydra_output.read.chomp
+      output = "FAILURE: command (#{cmd}) exited with #{status.inspect} and produced: #{stdout}" unless status.success?
+      hydra_output.close
+      hydra_output.unlink
+
+#       return hydra_response.read
+      return output
     end
 
     def run_javascript_file(file)
