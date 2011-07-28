@@ -172,7 +172,8 @@ module Hydra #:nodoc:
 
       runners = worker.fetch('runners') { raise "You must specify the number of runners"  }
       command = worker.fetch('command') {
-        "RAILS_ENV=#{@environment} ruby -e \"require 'rubygems'; require 'hydra'; Hydra::Worker.new(:io => Hydra::Stdio.new, :runners => #{runners}, :verbose => #{@verbose});\""
+#         "RAILS_ENV=#{@environment} ruby -e \"require 'rubygems'; require 'hydra'; Hydra::Worker.new(:io => Hydra::Stdio.new, :runners => #{runners}, :verbose => #{@verbose});\""
+        "RAILS_ENV=test ruby -e \"require 'rubygems'; require 'bundler/setup'; require 'hydra'; Hydra::Worker.new(:io => Hydra::Stdio.new, :runners => #{runners}, :verbose => #{@verbose});\""
       }
 
       trace "Booting SSH worker"

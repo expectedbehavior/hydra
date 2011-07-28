@@ -10,11 +10,14 @@ module Hydra #:nodoc:
     def gets
       raise IOError unless @reader
       message = @reader.gets
-      return nil unless message
+      puts "GOT MESSAGE: #{message}"
+      return nil unless message # && message =~ /^MESSAGE: /
+#       message = message.sub(/^MESSAGE: /, '')
+      return nil if message =~ /Gem::SourceIndex/
       return Message.build(eval(message.chomp))
     rescue SyntaxError, NameError
       # uncomment to help catch remote errors by seeing all traffic
-      #$stderr.write "Not a message: [#{message.inspect}]\n"
+      $stderr.write "Not a message: [#{message.inspect}]\n"
       return gets
     end
 

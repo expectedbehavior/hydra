@@ -29,6 +29,7 @@ module Hydra #:nodoc:
     # the :class symbol, which is the class of the message
     # that it will build to.
     def self.build(hash)
+#       puts "Message build: #{hash.inspect}"
       hash.delete(:class).new(hash)
     end
 
