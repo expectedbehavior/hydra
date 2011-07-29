@@ -38,6 +38,8 @@ module Hydra #:nodoc:
 
     attr_accessor :environment
 
+    attr_accessor :runner_opts
+
     #
     # Search for the hydra config file
     def find_config_file
@@ -78,6 +80,8 @@ module Hydra #:nodoc:
       @serial = false
       @listeners = [Hydra::Listener::ProgressBar.new]
 
+      @runner_opts = ""
+
       yield self if block_given?
 
       # Ensure we override rspec's at_exit
@@ -94,7 +98,8 @@ module Hydra #:nodoc:
         :autosort => @autosort,
         :files => @files,
         :listeners => @listeners,
-        :environment => @environment
+        :environment => @environment,
+        :runner_opts => @runner_opts
       }
       if @config
         @opts.merge!(:config => @config)

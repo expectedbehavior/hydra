@@ -20,6 +20,8 @@ module Hydra #:nodoc:
       @verbose = opts.fetch(:verbose) { false }      
       $stdout.sync = true
 
+      @runner_opts = opts.fetch(:runner_opts) { "" }
+
       trace 'Creating test database'
       ENV['TEST_ENV_NUMBER'] = Process.pid.to_s
       begin
@@ -267,7 +269,7 @@ module Hydra #:nodoc:
       log_file = hydra_output.path
       old_env = ENV['RAILS_ENV']
       ENV.delete('RAILS_ENV')
-      cmd = "bundle exec spec --format Spec::Runner::Formatter::ProgressBarFormatter --require hydra/spec/hydra_formatter --format Spec::Runner::Formatter::HydraFormatter:#{log_file} #{file} 2>&1"
+      cmd = "bundle exec spec #{@runner_opts} --require hydra/spec/hydra_formatter --format Spec::Runner::Formatter::HydraFormatter:#{log_file} #{file} 2>&1"
       puts "================================================================================================================================================================================================================================================================running: #{cmd}"
       stdout = `#{cmd}`
       status = $?
@@ -294,8 +296,7 @@ module Hydra #:nodoc:
       log_file = hydra_output.path
       old_env = ENV['RAILS_ENV']
       ENV.delete('RAILS_ENV')
-#       cmd = "bundle exec cucumber -P --strict --tags ~@wip --require features/support --require features/step_definitions --format pretty --require #{File.dirname(__FILE__)}/cucumber/formatter.rb --format Cucumber::Formatter::Hydra --out #{log_file} #{file} 2>&1"
-      cmd = "bundle exec cucumber -P --strict --tags ~@wip --require features.old/support --require features.old/step_definitions --format pretty --require #{File.dirname(__FILE__)}/cucumber/formatter.rb --format Cucumber::Formatter::Hydra --out #{log_file} #{file} 2>&1"
+      cmd = "bundle exec cucumber #{@runner_opts} --require #{File.dirname(__FILE__)}/cucumber/formatter.rb --format Cucumber::Formatter::Hydra --out #{log_file} #{file} 2>&1"
       puts "================================================================================================================================================================================================================================================================running: #{cmd}"
       stdout = `#{cmd}`
       status = $?

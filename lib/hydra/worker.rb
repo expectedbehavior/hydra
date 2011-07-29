@@ -20,6 +20,8 @@ module Hydra #:nodoc:
       @runners = []
       @listeners = []
 
+      @runner_opts = opts.fetch(:runner_opts) { "" }
+
       load_worker_initializer
       boot_runners(opts.fetch(:runners) { 1 })
       @io.write(Hydra::Messages::Worker::WorkerBegin.new)
@@ -83,7 +85,7 @@ module Hydra #:nodoc:
         pipe = Hydra::Pipe.new
         child = SafeFork.fork do
           pipe.identify_as_child
-          Hydra::Runner.new(:io => pipe, :verbose => @verbose)
+          Hydra::Runner.new(:io => pipe, :verbose => @verbose, :runner_opts => @runner_opts)
         end
         pipe.identify_as_parent
         @runners << { :pid => child, :io => pipe, :idle => false }

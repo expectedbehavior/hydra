@@ -69,6 +69,8 @@ module Hydra #:nodoc:
       @sync = opts.fetch('sync') { nil }
       @environment = opts.fetch('environment') { 'test' }
 
+      @runner_opts = opts.fetch('runner_opts') { '' }
+
       if @autosort
         sort_files_from_report
         @event_listeners << Hydra::Listener::ReportGenerator.new(File.new(heuristic_file, 'w'))
@@ -173,7 +175,7 @@ module Hydra #:nodoc:
       runners = worker.fetch('runners') { raise "You must specify the number of runners"  }
       command = worker.fetch('command') {
 #         "RAILS_ENV=#{@environment} ruby -e \"require 'rubygems'; require 'hydra'; Hydra::Worker.new(:io => Hydra::Stdio.new, :runners => #{runners}, :verbose => #{@verbose});\""
-        "RAILS_ENV=test ruby -e \"require 'rubygems'; require 'bundler/setup'; require 'hydra'; Hydra::Worker.new(:io => Hydra::Stdio.new, :runners => #{runners}, :verbose => #{@verbose});\""
+        "RAILS_ENV=test ruby -e \"require 'rubygems'; require 'bundler/setup'; require 'hydra'; Hydra::Worker.new(:io => Hydra::Stdio.new, :runners => #{runners}, :verbose => #{@verbose}, :runner_opts => '#{@runner_opts}');\""
       }
 
       trace "Booting SSH worker"
