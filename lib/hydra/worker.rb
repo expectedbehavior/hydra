@@ -104,8 +104,8 @@ module Hydra #:nodoc:
       process_messages_from_runners
 
       @listeners.each{|l| l.join }
-      @io.close
       trace "Done processing messages"
+      @io.close
     end
 
     def process_messages_from_master
