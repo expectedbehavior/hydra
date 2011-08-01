@@ -43,6 +43,8 @@ module Hydra #:nodoc:
         CMD
         trace `#{cmd}`
         
+        ENV['SKIP_ROLLOUT_FETCH'] = "true"
+        
         old_env = ENV['RAILS_ENV']
         ENV['RAILS_ENV'] = "development"
 #         cmd = "rake db:test:clone_structure --trace"
@@ -287,7 +289,7 @@ module Hydra #:nodoc:
       log_file = hydra_output.path
       old_env = ENV['RAILS_ENV']
       ENV.delete('RAILS_ENV')
-      cmd = "bundle exec spec #{@runner_opts} --require hydra/spec/hydra_formatter --format Spec::Runner::Formatter::HydraFormatter:#{log_file} #{file} 2>&1"
+      cmd = "bundle exec spec #{@runner_opts} --require hydra/spec/hydra_formatter --format Spec::Runner::Formatter::HydraFormatter:#{log_file} #{file} 2>&1 | tee -a /tmp/spec.log"
       puts "================================================================================================================================================================================================================================================================running: #{cmd}"
       stdout = `#{cmd}`
       status = $?
