@@ -177,7 +177,8 @@ module Hydra #:nodoc:
       trace "Dropping test database #{ENV['TEST_ENV_NUMBER']}"
       ENV['TEST_ENV_NUMBER'] = Process.pid.to_s
       begin
-        Rake::Task['db:drop'].invoke
+        output = `rake db:drop TEST_ENV_NUMBER=#{ENV['TEST_ENV_NUMBER']} RAILS_ENV=test`
+        trace "DB:DROP -> #{output}"
       rescue Exception => e
         trace "Could not drop test database #{ENV['TEST_ENV_NUMBER']}: #{e}"
       end
