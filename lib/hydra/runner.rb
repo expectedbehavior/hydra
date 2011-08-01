@@ -13,11 +13,19 @@ module Hydra #:nodoc:
   class Runner
     include Hydra::Messages::Runner
     traceable('RUNNER')
+
+    DEFAULT_LOG_FILE = 'hydra-runner.log'
+
     # Boot up a runner. It takes an IO object (generally a pipe from its
     # parent) to send it messages on which files to execute.
     def initialize(opts = {})
-      @io = opts.fetch(:io) { raise "No IO Object" } 
-      @verbose = opts.fetch(:verbose) { false }      
+      redirect_output( opts.fetch( :runner_log_file ) { DEFAULT_LOG_FILE } )
+      reg_trap_sighup
+
+      @io = opts.fetch(:io) { raise "No IO Object" }
+      @verbose = opts.fetch(:verbose) { false }
+      @event_listeners = Array( opts.fetch( :runner_listeners ) { nil } )
+
       $stdout.sync = true
 
       @runner_opts = opts.fetch(:runner_opts) { "" }
@@ -142,6 +150,13 @@ module Hydra #:nodoc:
 
       trace 'Booted. Sending Request for file'
 
+      
+      
+      
+      runner_begin
+
+
+      trace 'Booted. Sending Request for file'
       @io.write RequestFile.new
       begin
         process_messages
@@ -149,6 +164,20 @@ module Hydra #:nodoc:
         trace ex.to_s
         raise ex
       end
+    end
+
+    def reg_trap_sighup
+      for sign in [:SIGHUP, :INT]
+        trap sign do
+          stop
+        end
+      end
+      @runner_began = true
+    end
+
+    def runner_begin
+      trace "Firing runner_begin event"
+      @event_listeners.each {|l| l.runner_begin( self ) }
     end
 
     # Run a test file and report the results
@@ -183,7 +212,17 @@ module Hydra #:nodoc:
         trace "Could not drop test database #{ENV['TEST_ENV_NUMBER']}: #{e}"
       end
       
-      @running = false
+      runner_end if @runner_began
+      @runner_began = @running = false
+    end
+
+    def runner_end
+      trace "Ending runner #{self.inspect}"
+      @event_listeners.each {|l| l.runner_end( self ) }
+    end
+
+    def format_exception(ex)
+      "#{ex.class.name}: #{ex.message}\n    #{ex.backtrace.join("\n    ")}"
     end
 
     private
@@ -204,17 +243,13 @@ module Hydra #:nodoc:
           end
         rescue IOError => ex
           trace "Runner lost Worker"
-          @running = false
+          stop
         end
       end
     end
 
     def format_ex_in_file(file, ex)
       "Error in #{file}:\n  #{format_exception(ex)}"
-    end
-
-    def format_exception(ex)
-      "#{ex.class.name}: #{ex.message}\n    #{ex.backtrace.join("\n    ")}"
     end
 
     # Run all the Test::Unit Suites in a ruby file
@@ -370,6 +405,16 @@ module Hydra #:nodoc:
           nil
         end
       end.compact
+    end
+
+    def redirect_output file_name
+      begin
+        $stderr = $stdout =  File.open(file_name, 'a')
+      rescue
+        # it should always redirect output in order to handle unexpected interruption
+        # successfully
+        $stderr = $stdout =  File.open(DEFAULT_LOG_FILE, 'a')
+      end
     end
   end
 end

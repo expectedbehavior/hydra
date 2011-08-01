@@ -64,6 +64,10 @@ module Hydra #:nodoc:
         listener = eval(l)
         @event_listeners << listener if listener.is_a?(Hydra::Listener::Abstract)
       end
+
+      @string_runner_event_listeners = Array( opts.fetch( 'runner_listeners' ) { nil } )
+
+      @runner_log_file = opts.fetch('runner_log_file') { nil }
       @verbose = opts.fetch('verbose') { false }
       @autosort = opts.fetch('autosort') { true }
       @sync = opts.fetch('sync') { nil }
@@ -162,7 +166,7 @@ module Hydra #:nodoc:
       pipe = Hydra::Pipe.new
       child = SafeFork.fork do
         pipe.identify_as_child
-        Hydra::Worker.new(:io => pipe, :runners => runners, :verbose => @verbose)
+        Hydra::Worker.new(:io => pipe, :runners => runners, :verbose => @verbose, :runner_listeners => @string_runner_event_listeners, :runner_log_file => @runner_log_file )
       end
 
       pipe.identify_as_parent
@@ -174,8 +178,8 @@ module Hydra #:nodoc:
 
       runners = worker.fetch('runners') { raise "You must specify the number of runners"  }
       command = worker.fetch('command') {
-#         "RAILS_ENV=#{@environment} ruby -e \"require 'rubygems'; require 'hydra'; Hydra::Worker.new(:io => Hydra::Stdio.new, :runners => #{runners}, :verbose => #{@verbose});\""
-        "RAILS_ENV=test ruby -e \"require 'rubygems'; require 'bundler/setup'; require 'hydra'; Hydra::Worker.new(:io => Hydra::Stdio.new, :runners => #{runners}, :verbose => #{@verbose}, :runner_opts => '#{@runner_opts}');\""
+#         "RAILS_ENV=#{@environment} ruby -e \"require 'rubygems'; require 'hydra'; Hydra::Worker.new(:io => Hydra::Stdio.new, :runners => #{runners}, :verbose => #{@verbose}, :runner_listeners => \'#{@string_runner_event_listeners}\', :runner_log_file => \'#{@runner_log_file}\' );\""
+        "RAILS_ENV=test ruby -e \"require 'rubygems'; require 'bundler/setup'; require 'hydra'; Hydra::Worker.new(:io => Hydra::Stdio.new, :runners => #{runners}, :verbose => #{@verbose}, :runner_opts => '#{@runner_opts}', :runner_listeners => \'#{@string_runner_event_listeners}\', :runner_log_file => \'#{@runner_log_file}\');\""
       }
 
       trace "Booting SSH worker"
