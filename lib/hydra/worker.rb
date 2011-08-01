@@ -86,6 +86,14 @@ module Hydra #:nodoc:
         child = SafeFork.fork do
           pipe.identify_as_child
           Hydra::Runner.new(:io => pipe, :verbose => @verbose, :runner_opts => @runner_opts)
+          trace "After runner, before runner exit"
+          trace Thread.list.inspect
+          at_exit { trace "at_exit" }
+#           set_trace_func proc { |event, file, line, id, binding, classname|
+#             trace("%8s %s:%-2d %10s %8s\n" % [event, file, line, id, classname])
+#           }
+          Process.kill("KILL", 0)
+#           exit!
         end
         pipe.identify_as_parent
         @runners << { :pid => child, :io => pipe, :idle => false }

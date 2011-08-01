@@ -44,6 +44,9 @@ module Hydra #:nodoc:
     # Close the SSH connection
     def close
       @writer.write "exit\n"
+#       @writer.flush
+#       puts @reader.read
+      @reader.read
       super
     end
   end

@@ -46,112 +46,93 @@ module Hydra #:nodoc:
         require 'tempfile'
         
         
-        r, w = IO.pipe
-        @redis_pid = fork do
-          w.close
-          Thread.new do
-            begin
-              r.read
-            rescue Exception
-              Kernel.exit
-            end
-          end
-          
-          @redis_pid = Process.pid
-          i = (@redis_pid % 50_000) + 10_000
-#           i = 6379
-#           1000.times do
-#             i += 1
-            cmd = "echo 'port #{i}' | redis-server -"
-            puts "running: #{cmd}"
-            exec cmd
-#           end
-          
-          
-          exit
-        end
-        r.close
-        
-        
-        
-#         require 'slave'
-#         r = Slave.object(:async => true) do 
-#           @redis_pid = Process.pid
-#           i = (@redis_pid % 50_000) + 10_000
-#           cmd = "echo 'port #{i}' | redis-server -"
-#           puts "running: #{cmd}"
-#           system cmd
-#         end
-#         @redis_pid = r.pid
-        
-#         @redis_pid = Process.fork do
-#           @redis_pid = Process.pid
-#           i = (@redis_pid % 50_000) + 10_000
-# #           i = 6379
-# #           1000.times do
-# #             i += 1
-#             cmd = "echo 'port #{i}' | redis-server -"
-#             puts "running: #{cmd}"
-#             system cmd
-# #           end
-#           Process.exit!
-#         end
-        ENV['REDIS_PORT'] = ((@redis_pid % 50_000) + 10_000).to_s
-        trace "runner redis port: #{ENV['REDIS_PORT']}"
-        
         
         r, w = IO.pipe
         @memcached_pid = fork do
           w.close
+          
+          i = (Process.pid % 50_000) + 10_000
+          cmd = "memcached -p #{i}"
+          puts "running: #{cmd}"
+          child_pid = fork do
+            exec cmd
+          end
+          
           Thread.new do
             begin
               r.read
-            rescue Exception
-              Kernel.exit
+            ensure
+              Process.kill "TERM", child_pid
+              exit
             end
           end
           
-          @memcached_pid = Process.pid
-          i = (@memcached_pid % 50_000) + 10_000
-#           i = 11211
-#           1000.times do
-#             i += 1
-            exec "memcached -p #{i}"
-#           end
-          
-          
+          Process.wait child_pid
           exit
         end
         r.close
+#         at_exit { w.close }
         
-        
-        
-#         m = Slave.object(:async => true) do 
-#           @memcached_pid = Process.pid
-#           i = (@memcached_pid % 50_000) + 10_000
-#           system "memcached -p #{i}"
-#         end
-#         @memcached_pid = m.pid
-        
-#         @memcached_pid = Process.fork do
-#           @memcached_pid = Process.pid
-#           i = (@memcached_pid % 50_000) + 10_000
-# #           i = 11211
-# #           1000.times do
-# #             i += 1
-#             system "memcached -p #{i}"
-# #           end
-#           Process.exit!
-#         end
         ENV['MEMCACHED_PORT'] = ((@memcached_pid % 50_000) + 10_000).to_s
         trace "runner memcached port: #{ENV['MEMCACHED_PORT']}"
         
-        at_exit do
-          puts "Killing forks ================================================================"
-          Process.kill("TERM", @redis_pid)
-          Process.kill("TERM", @memcached_pid)
-          puts "Killed forks ================================================================"
+
+        r, w = IO.pipe
+        @redis_pid = fork do
+          w.close
+          
+          i = (Process.pid % 50_000) + 10_000
+          
+          
+#           raise 'First fork failed' if (pid = fork) == -1
+#           exit unless pid.nil?
+
+#           Process.setsid
+#           raise 'Second fork failed' if (pid = fork) == -1
+#           exit unless pid.nil?
+#           puts "Daemon pid: #{Process.pid}" # Or save it somewhere, etc.
+
+#           Dir.chdir '/'
+#           File.umask 0000
+          
+          
+          
+          
+          cmd = "echo 'port #{i}' | redis-server -"
+          puts "running: #{cmd}"
+#           child_pid = fork do
+#             exec cmd
+#           end
+          io = IO.popen("redis-server -", "r+")
+          child_pid = io.pid
+          io.puts "port #{i}"
+          io.close_write
+
+          Thread.new do
+            loop do
+              trace io.gets
+            end
+          end
+
+          Thread.new do
+            begin
+              r.read
+            ensure
+              trace "killing TERM #{child_pid}"
+              Process.kill "TERM", child_pid
+              exit
+            end
+          end
+          
+          Process.wait child_pid
+          exit
         end
+        r.close
+#         Process.detach @redis_pid
+#         at_exit { w.close }
+        
+        ENV['REDIS_PORT'] = ((@redis_pid % 50_000) + 10_000).to_s
+        trace "runner redis port: #{ENV['REDIS_PORT']}"
         
       rescue Exception => e
         trace "Error creating test DB: #{e}"
