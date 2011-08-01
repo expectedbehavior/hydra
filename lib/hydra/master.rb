@@ -189,14 +189,16 @@ module Hydra #:nodoc:
 
     def shutdown_all_workers
       trace "Shutting down all workers"
-      @workers.each do |worker|
-        worker[:io].write(Shutdown.new) if worker[:io]
-        trace "worker[:io]: #{worker[:io].inspect}"
-#         (1..100).to_a.map { trace worker[:io].gets } if worker[:io]
-#         trace worker[:io].instance_variable_get(:@reader).read if worker[:io]
-#         worker[:io].instance_variable_get(:@reader).flush if worker[:io]
-        worker[:io].close if worker[:io]
-      end
+      @workers.map do |worker|
+        Thread.new do
+          worker[:io].write(Shutdown.new) if worker[:io]
+          trace "worker[:io]: #{worker[:io].inspect}"
+  #         (1..100).to_a.map { trace worker[:io].gets } if worker[:io]
+  #         trace worker[:io].instance_variable_get(:@reader).read if worker[:io]
+  #         worker[:io].instance_variable_get(:@reader).flush if worker[:io]
+          worker[:io].close if worker[:io]
+        end
+      end.each { |thread| thread.join }
       @listeners.each{|t| t.exit}
     end
 
