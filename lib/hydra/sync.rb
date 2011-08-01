@@ -40,6 +40,10 @@ module Hydra #:nodoc:
     end
 
     def sync
+      # make directory to sync to
+      ssh = Hydra::SSH.new("#{@ssh_opts} #{@connect}", @remote_dir, "exit")
+      ssh.close
+      
       #trace "Synchronizing with #{connect}\n\t#{sync_opts.inspect}"
       exclude_opts = @exclude_paths.inject(''){|memo, path| memo += "--exclude=#{path} "}
 
