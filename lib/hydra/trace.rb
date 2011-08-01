@@ -16,7 +16,9 @@ module Hydra #:nodoc:
       # Trace some output with the class's prefix and a newline.
       # Checks to ensure we're running verbosely.
       def trace(str)
-        $stdout.write "#{Time.now.to_f} #{self.class._traceable_prefix}| #{str}\n" if @verbose
+        str = "#{Time.now.to_f} #{self.class._traceable_prefix} [#{Process.pid}]| #{str}\n"
+        IO.popen("logger", "w") { |io| io.write str }
+        $stdout.write str if @verbose
       end
     end
   end

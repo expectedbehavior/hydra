@@ -1,6 +1,6 @@
-require 'test/unit'
-require 'test/unit/testresult'
-Test::Unit.run = true
+# require 'test/unit'
+# require 'test/unit/testresult'
+# Test::Unit.run = true
 
 module Hydra #:nodoc:
   # Hydra class responsible for running test files.
@@ -246,6 +246,7 @@ module Hydra #:nodoc:
           stop
         end
       end
+      trace "Stopped Processing Messages"
     end
 
     def format_ex_in_file(file, ex)

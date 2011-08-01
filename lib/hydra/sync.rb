@@ -91,7 +91,7 @@ module Hydra #:nodoc:
             trace "Syncing #{worker_opts.inspect}"
             Sync.new worker_opts, @sync, @verbose
           rescue 
-            trace "Syncing failed [#{worker_opts.inspect}]"
+            trace "Syncing failed [#{worker_opts.inspect}]\n#{$!.message}\n#{$!.backtrace}"
           end
         end
       end

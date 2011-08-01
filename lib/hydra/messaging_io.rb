@@ -12,6 +12,7 @@ module Hydra #:nodoc:
         begin
           raise IOError unless @reader
           message = @reader.gets
+          puts "#{Process.pid} GOT MESSAGE: #{message}"
           return nil unless message
           return nil if message !~ /^\s*\{/
           return nil if message =~ /^\s*Gem::SourceIndex/
@@ -41,6 +42,8 @@ module Hydra #:nodoc:
     def close
       @reader.close if @reader
       @writer.close if @writer
+#       @reader.reopen "/dev/null" if @reader
+#       @writer.reopen "/dev/null" if @writer
     end
 
     # IO will return this error if it cannot process a message.

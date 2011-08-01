@@ -179,7 +179,7 @@ module Hydra #:nodoc:
       runners = worker.fetch('runners') { raise "You must specify the number of runners"  }
       command = worker.fetch('command') {
 #         "RAILS_ENV=#{@environment} ruby -e \"require 'rubygems'; require 'hydra'; Hydra::Worker.new(:io => Hydra::Stdio.new, :runners => #{runners}, :verbose => #{@verbose}, :runner_listeners => \'#{@string_runner_event_listeners}\', :runner_log_file => \'#{@runner_log_file}\' );\""
-        "RAILS_ENV=test ruby -e \"require 'rubygems'; require 'bundler/setup'; require 'hydra'; Hydra::Worker.new(:io => Hydra::Stdio.new, :runners => #{runners}, :verbose => #{@verbose}, :runner_opts => '#{@runner_opts}', :runner_listeners => \'#{@string_runner_event_listeners}\', :runner_log_file => \'#{@runner_log_file}\');\""
+        "RAILS_ENV=test ruby -e \"require 'rubygems'; require 'bundler/setup'; require 'hydra'; Hydra::Worker.new(:io => Hydra::Stdio.new, :runners => #{runners}, :verbose => #{@verbose}, :runner_opts => '#{@runner_opts}', :runner_listeners => \'#{@string_runner_event_listeners}\', :runner_log_file => \'#{@runner_log_file}\');\" 2>&1"
       }
 
       trace "Booting SSH worker"
@@ -191,6 +191,10 @@ module Hydra #:nodoc:
       trace "Shutting down all workers"
       @workers.each do |worker|
         worker[:io].write(Shutdown.new) if worker[:io]
+        trace "worker[:io]: #{worker[:io].inspect}"
+#         (1..100).to_a.map { trace worker[:io].gets } if worker[:io]
+#         trace worker[:io].instance_variable_get(:@reader).read if worker[:io]
+#         worker[:io].instance_variable_get(:@reader).flush if worker[:io]
         worker[:io].close if worker[:io]
       end
       @listeners.each{|t| t.exit}
