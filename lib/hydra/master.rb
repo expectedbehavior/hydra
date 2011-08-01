@@ -73,7 +73,7 @@ module Hydra #:nodoc:
 
       if @autosort
         sort_files_from_report
-        @event_listeners << Hydra::Listener::ReportGenerator.new(File.new(heuristic_file, 'w'))
+        @event_listeners << Hydra::Listener::ReportGenerator.new(File.new(heuristic_file, 'r+'))
       end
 
       # default is one worker that is configured to use a pipe with one runner

@@ -22,7 +22,10 @@ module Hydra #:nodoc:
 
       # output the report
       def testing_end
-        YAML.dump(@report, @output)
+        new_report = YAML.load(@output).merge(@report)
+        @output.truncate(0)
+        @output.rewind
+        YAML.dump(new_report, @output)
         @output.close
       end
     end
