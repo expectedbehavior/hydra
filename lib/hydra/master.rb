@@ -57,6 +57,9 @@ module Hydra #:nodoc:
       @autosort = opts.fetch('autosort') { true }
       @sync = opts.fetch('sync') { nil }
       @environment = opts.fetch('environment') { 'test' }
+      @signals = opts.fetch('signals') {
+        ['SIGTERM', 'SIGINT']
+      }
 
       @runner_opts = opts.fetch('runner_opts') { '' }
 
@@ -76,6 +79,7 @@ module Hydra #:nodoc:
       @event_listeners.each{|l| l.testing_begin(@files) }
 
       boot_workers worker_cfg
+      trap_signals
       process_messages
     end
 
@@ -163,8 +167,8 @@ module Hydra #:nodoc:
 
       runners = worker.fetch('runners') { raise "You must specify the number of runners"  }
       command = worker.fetch('command') {
-#         "RAILS_ENV=#{@environment} ruby -e \"require 'rubygems'; require 'hydra'; Hydra::Worker.new(:io => Hydra::Stdio.new, :runners => #{runners}, :verbose => #{@verbose}, :runner_listeners => \'#{@string_runner_event_listeners}\', :runner_log_file => \'#{@runner_log_file}\' );\""
-        "RAILS_ENV=test ruby -e \"require 'rubygems'; require 'bundler/setup'; require 'hydra'; Hydra::Worker.new(:io => Hydra::Stdio.new, :runners => #{runners}, :verbose => #{@verbose}, :runner_opts => '#{@runner_opts}', :runner_listeners => \'#{@string_runner_event_listeners}\', :runner_log_file => \'#{@runner_log_file}\');\" 2>&1"
+#         "RAILS_ENV=#{@environment} ruby -e \"require 'rubygems'; require 'hydra'; Hydra::Worker.new(:io => Hydra::Stdio.new, :runners => #{runners}, :verbose => #{@verbose}, :runner_listeners => \'#{@string_runner_event_listeners}\', :runner_log_file => \'#{@runner_log_file}\', :remote => '#{sync.connect}' );\""
+        "RAILS_ENV=test ruby -e \"require 'rubygems'; require 'bundler/setup'; require 'hydra'; Hydra::Worker.new(:io => Hydra::Stdio.new, :runners => #{runners}, :verbose => #{@verbose}, :runner_opts => '#{@runner_opts}', :runner_listeners => \'#{@string_runner_event_listeners}\', :runner_log_file => \'#{@runner_log_file}\', :remote => '#{sync.connect}' );\" 2>&1"
       }
 
       trace "Booting SSH worker"
@@ -236,6 +240,16 @@ module Hydra #:nodoc:
 
     def heuristic_file
       @heuristic_file ||= File.join(Dir.consistent_tmpdir, 'hydra_heuristics.yml')
+    end
+
+    def trap_signals
+      @signals.each do |signal|
+        Signal.trap signal do
+          trace "Caught signal #{signal}, shutting down."
+          shutdown_all_workers
+          exit 1
+        end
+      end
     end
   end
 end

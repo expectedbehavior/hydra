@@ -14,6 +14,7 @@ module Hydra #:nodoc:
           message = @reader.gets
           puts "#{Process.pid} GOT MESSAGE: #{message}"
           return nil unless message
+          puts message if message.include?(Hydra::Trace::REMOTE_IDENTIFIER)
           return nil if message !~ /^\s*(\{|\.)/ # must start with { or .
           return Message.build(eval(message.chomp))
         rescue SyntaxError, NameError

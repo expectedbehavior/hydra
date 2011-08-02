@@ -16,6 +16,7 @@ module Hydra #:nodoc:
     # * num_runners: The number of runners to launch
     def initialize(opts = {})
       @verbose = opts.fetch(:verbose) { false }
+      @remote = opts.fetch(:remote) { false }
       @io = opts.fetch(:io) { raise "No IO Object" }
       @runners = []
       @listeners = []
@@ -94,7 +95,7 @@ module Hydra #:nodoc:
         pipe = Hydra::Pipe.new
         child = SafeFork.fork do
           pipe.identify_as_child
-          Hydra::Runner.new(:io => pipe, :verbose => @verbose, :runner_opts => @runner_opts, :runner_listeners => @runner_event_listeners, :runner_log_file => @runner_log_file )
+          Hydra::Runner.new(:io => pipe, :verbose => @verbose, :runner_opts => @runner_opts, :runner_listeners => @runner_event_listeners, :runner_log_file => @runner_log_file, :remote => @remote)
           trace "After runner, before runner exit"
           trace Thread.list.inspect
           at_exit { trace "at_exit" }
