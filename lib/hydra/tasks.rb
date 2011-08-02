@@ -278,7 +278,7 @@ module Hydra #:nodoc:
     def define
       desc "Run #{@name} remotely on all workers"
       task "hydra:remote:#{@name}" do
-        config = YAML.load_file(@config)
+        config = Hydra.load_config(@config)
         environment = config.fetch('environment') { 'test' }
         workers = config.fetch('workers') { [] }
         workers = workers.select{|w| w['type'] == 'ssh'}

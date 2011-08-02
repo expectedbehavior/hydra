@@ -36,22 +36,7 @@ module Hydra #:nodoc:
     def initialize(opts = { })
       opts.stringify_keys!
       config_file = opts.delete('config') { nil }
-      if config_file
-
-        begin
-          config_erb = ERB.new(IO.read(config_file)).result(binding)
-        rescue Exception => e
-          raise(YmlLoadError,"config file was found, but could not be parsed with ERB.\n#{$!.inspect}")
-        end
-
-        begin
-          config_yml = YAML::load(config_erb)
-        rescue StandardError => e
-          raise(YmlLoadError,"config file was found, but could not be parsed.\n#{$!.inspect}")
-        end
-
-        opts.merge!(config_yml.stringify_keys!)
-      end
+      opts.merge!(Hydra.load_config(config_file)) if config_file
       @files = Array(opts.fetch('files') { nil })
       raise "No files, nothing to do" if @files.empty?
       @incomplete_files = @files.dup

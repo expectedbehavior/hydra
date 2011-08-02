@@ -64,7 +64,7 @@ module Hydra #:nodoc:
       opts.stringify_keys!
       config_file = opts.delete('config') { nil }
       if config_file
-        opts.merge!(YAML.load_file(config_file).stringify_keys!)
+        opts.merge!(Hydra.load_config(config_file))
       end
       @verbose = opts.fetch('verbose') { false }
       @sync = opts.fetch('sync') { {} }
