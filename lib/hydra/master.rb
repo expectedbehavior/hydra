@@ -167,8 +167,7 @@ module Hydra #:nodoc:
 
       runners = worker.fetch('runners') { raise "You must specify the number of runners"  }
       command = worker.fetch('command') {
-#         "RAILS_ENV=#{@environment} ruby -e \"require 'rubygems'; require 'hydra'; Hydra::Worker.new(:io => Hydra::Stdio.new, :runners => #{runners}, :verbose => #{@verbose}, :runner_listeners => \'#{@string_runner_event_listeners}\', :runner_log_file => \'#{@runner_log_file}\', :remote => '#{sync.connect}' );\""
-        "RAILS_ENV=test ruby -e \"require 'rubygems'; require 'bundler/setup'; require 'hydra'; Hydra::Worker.new(:io => Hydra::Stdio.new, :runners => #{runners}, :verbose => #{@verbose}, :runner_opts => '#{@runner_opts}', :runner_listeners => \'#{@string_runner_event_listeners}\', :runner_log_file => \'#{@runner_log_file}\', :remote => '#{sync.connect}' );\" 2>&1"
+        "RAILS_ENV=#{@environment} ruby -e \"require 'rubygems'; require 'bundler/setup'; require 'hydra'; Hydra::Worker.new(:io => Hydra::Stdio.new, :runners => #{runners}, :verbose => #{@verbose}, :runner_opts => '#{@runner_opts}', :runner_listeners => \'#{@string_runner_event_listeners}\', :runner_log_file => \'#{@runner_log_file}\', :remote => '#{sync.connect}' );\" 2>&1"
       }
 
       trace "Booting SSH worker"
