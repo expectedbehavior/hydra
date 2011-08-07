@@ -14,6 +14,7 @@ module Hydra #:nodoc:
   #
   # Note that what ever process you run should respond with Hydra messages.
   class SSH
+    traceable('PIPE')
     include Open3
     include Hydra::MessagingIO
 
@@ -25,7 +26,8 @@ module Hydra #:nodoc:
     #   Hydra::SSH.new('-p 3022 user@server.com', '/home/user/Desktop', 'ls -l')
     # To connect to server.com as user on port 3022, then CD to their desktop, then
     # list all the files.
-    def initialize(connection_options, directory, command)
+    def initialize(connection_options, directory, command, options = {})
+      super(options)
       puts "sshing..."
       @writer, @reader, @error = popen3("ssh -tt #{connection_options}")
       @writer.write("echo connected\n")

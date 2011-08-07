@@ -41,7 +41,7 @@ module Hydra #:nodoc:
 
     def sync
       # make directory to sync to
-      ssh = Hydra::SSH.new("#{@ssh_opts} #{@connect}", @remote_dir, "exit")
+      ssh = Hydra::SSH.new("#{@ssh_opts} #{@connect}", @remote_dir, "exit", :verbose => @verbose)
       ssh.close
       
       #trace "Synchronizing with #{connect}\n\t#{sync_opts.inspect}"

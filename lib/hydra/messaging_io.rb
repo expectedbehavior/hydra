@@ -2,6 +2,10 @@ module Hydra #:nodoc:
   # Module that implemets methods that auto-serialize and deserialize messaging
   # objects.
   module MessagingIO
+    def initialize(options = {})
+      @verbose = options[:verbose]
+    end
+    
     # Read a Message from the input IO object. Automatically build
     # a message from the response and return it.
     #
@@ -12,14 +16,14 @@ module Hydra #:nodoc:
         begin
           raise IOError unless @reader
           message = @reader.gets
-          puts "#{Process.pid} GOT MESSAGE: #{message}"
+#           puts "#{Process.pid} GOT MESSAGE #{@verbose.inspect}: #{message}"
           return nil unless message
-          puts message if message.include?(Hydra::Trace::REMOTE_IDENTIFIER)
+          trace message if message.include?(Hydra::Trace::REMOTE_IDENTIFIER)
           return nil if message !~ /^\s*(\{|\.)/ # must start with { or .
           return Message.build(eval(message.chomp))
         rescue SyntaxError, NameError
           # uncomment to help catch remote errors by seeing all traffic
-          $stderr.write "Not a message: [#{message.inspect}]\n"
+          trace "Not a message: [#{message.inspect}]\n"
         end
       end
     end
@@ -39,8 +43,6 @@ module Hydra #:nodoc:
     def close
       @reader.close if @reader
       @writer.close if @writer
-#       @reader.reopen "/dev/null" if @reader
-#       @writer.reopen "/dev/null" if @writer
     end
 
     # IO will return this error if it cannot process a message.

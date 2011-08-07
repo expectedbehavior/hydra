@@ -29,11 +29,13 @@ module Hydra #:nodoc:
   # One tube is for sending from parent to child, and the other
   # tube is for sending from child to parent.
   class Pipe
+    traceable('PIPE')
     include Hydra::MessagingIO
     # Creates a new uninitialized pipe pair.
-    def initialize
+    def initialize(options = {})
       @child_read, @parent_write = IO.pipe
       @parent_read, @child_write = IO.pipe
+      super
     end
 
     # Identify this side of the pipe as the child.

@@ -152,7 +152,7 @@ module Hydra #:nodoc:
     def boot_local_worker(worker)
       runners = worker.fetch('runners') { raise "You must specify the number of runners" }
       trace "Booting local worker"
-      pipe = Hydra::Pipe.new
+      pipe = Hydra::Pipe.new(:verbose => @verbose)
       child = SafeFork.fork do
         pipe.identify_as_child
         Hydra::Worker.new(:io => pipe, :runners => runners, :verbose => @verbose, :runner_listeners => @string_runner_event_listeners, :runner_log_file => @runner_log_file )
@@ -167,11 +167,11 @@ module Hydra #:nodoc:
 
       runners = worker.fetch('runners') { raise "You must specify the number of runners"  }
       command = worker.fetch('command') {
-        "RAILS_ENV=#{@environment} ruby -e \"require 'rubygems'; require 'bundler/setup'; require 'hydra'; Hydra::Worker.new(:io => Hydra::Stdio.new, :runners => #{runners}, :verbose => #{@verbose}, :runner_opts => '#{@runner_opts}', :runner_listeners => \'#{@string_runner_event_listeners}\', :runner_log_file => \'#{@runner_log_file}\', :remote => '#{sync.connect}' );\" 2>&1"
+        "RAILS_ENV=#{@environment} ruby -e \"require 'rubygems'; require 'bundler/setup'; require 'hydra'; Hydra::Worker.new(:io => Hydra::Stdio.new(:verbose => #{@verbose}), :runners => #{runners}, :verbose => #{@verbose}, :runner_opts => '#{@runner_opts}', :runner_listeners => \'#{@string_runner_event_listeners}\', :runner_log_file => \'#{@runner_log_file}\', :remote => '#{sync.connect}' );\" 2>&1"
       }
 
       trace "Booting SSH worker"
-      ssh = Hydra::SSH.new("#{sync.ssh_opts} #{sync.connect}", sync.remote_dir, command)
+      ssh = Hydra::SSH.new("#{sync.ssh_opts} #{sync.connect}", sync.remote_dir, command, :verbose => @verbose)
       return { :io => ssh, :idle => false, :type => :ssh, :connect => sync.connect }
     end
 
@@ -181,9 +181,6 @@ module Hydra #:nodoc:
         Thread.new do
           worker[:io].write(Shutdown.new) if worker[:io]
           trace "worker[:io]: #{worker[:io].inspect}"
-  #         (1..100).to_a.map { trace worker[:io].gets } if worker[:io]
-  #         trace worker[:io].instance_variable_get(:@reader).read if worker[:io]
-  #         worker[:io].instance_variable_get(:@reader).flush if worker[:io]
           worker[:io].close if worker[:io]
         end
       end.each { |thread| thread.join }
@@ -205,7 +202,7 @@ module Hydra #:nodoc:
           while true
             begin
               message = worker[:io].gets
-              trace "got message: #{message}"
+              trace "got message: #{message}" if message
               # if it exists and its for me.
               # SSH gives us back echoes, so we need to ignore our own messages
               if message and !message.class.to_s.index("Worker").nil?

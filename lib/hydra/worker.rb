@@ -92,7 +92,7 @@ module Hydra #:nodoc:
     def boot_runners(num_runners) #:nodoc:
       trace "Booting #{num_runners} Runners"
       num_runners.times do
-        pipe = Hydra::Pipe.new
+        pipe = Hydra::Pipe.new(:verbose => @verbose)
         child = SafeFork.fork do
           pipe.identify_as_child
           Hydra::Runner.new(:io => pipe, :verbose => @verbose, :runner_opts => @runner_opts, :runner_listeners => @runner_event_listeners, :runner_log_file => @runner_log_file, :remote => @remote)
