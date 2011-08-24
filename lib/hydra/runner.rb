@@ -39,10 +39,10 @@ module Hydra #:nodoc:
 #         trace ``
 
         cmd = <<-CMD
-          rake db:drop
-          rake db:create:all
+          rake db:drop --trace
+          rake db:create:all --trace
         CMD
-        trace `#{cmd}`
+        trace "DB CREATE -> " + `#{cmd}`
         
         ENV['SKIP_ROLLOUT_FETCH'] = "true"
         
@@ -52,7 +52,7 @@ module Hydra #:nodoc:
         cmd = <<-CMD
           rake db:test:load_structure --trace
         CMD
-        trace `#{cmd}`
+        trace "DB LOAD STRUCTURE -> " + `#{cmd}`
         ENV['RAILS_ENV'] = old_env
         require 'tempfile'
         
@@ -150,6 +150,9 @@ module Hydra #:nodoc:
         raise
       end
       
+      # let's see if this fixes memcache server marked dead errors
+      sleep 10
+      trace "memcache stats port #{ENV['MEMCACHED_PORT']}: " + `echo stats | nc localhost #{ENV['MEMCACHED_PORT']}`
 
       trace 'Booted. Sending Request for file'
 
@@ -291,12 +294,13 @@ module Hydra #:nodoc:
       old_env = ENV['RAILS_ENV']
       ENV.delete('RAILS_ENV')
       cmd = "bundle exec spec #{@runner_opts} --require hydra/spec/hydra_formatter --format Spec::Runner::Formatter::HydraFormatter:#{log_file} #{file} 2>&1 | tee -a /tmp/spec.log"
-      puts "================================================================================================================================================================================================================================================================running: #{cmd}"
+      trace "================================================================================================================================================================================================================================================================running: #{cmd}"
       stdout = `#{cmd}`
       status = $?
       trace stdout
       ENV['RAILS_ENV'] = old_env
       
+      trace "memcache stats port #{ENV['MEMCACHED_PORT']}: " + `echo stats | nc localhost #{ENV['MEMCACHED_PORT']}`
       
       hydra_output.rewind
       output = hydra_output.read.chomp
@@ -318,7 +322,7 @@ module Hydra #:nodoc:
       old_env = ENV['RAILS_ENV']
       ENV.delete('RAILS_ENV')
       cmd = "bundle exec cucumber #{@runner_opts} --require #{File.dirname(__FILE__)}/cucumber/formatter.rb --format Cucumber::Formatter::Hydra --out #{log_file} #{file} 2>&1"
-      puts "================================================================================================================================================================================================================================================================running: #{cmd}"
+      trace "================================================================================================================================================================================================================================================================running: #{cmd}"
       stdout = `#{cmd}`
       status = $?
       trace stdout
