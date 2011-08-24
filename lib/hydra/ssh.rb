@@ -37,7 +37,7 @@ module Hydra #:nodoc:
       puts "cd..."
       @writer.write("cd #{directory}\n")
       @writer.write("echo cded\n")
-      puts "writing command..."
+      puts "writing command: #{command}"
       res = @writer.write(command+"\n")
       puts "written..."
       res
