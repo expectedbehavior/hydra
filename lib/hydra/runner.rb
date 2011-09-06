@@ -40,10 +40,10 @@ module Hydra #:nodoc:
 #         trace ``
 
         cmd = <<-CMD
-          rake db:drop --trace
-          rake db:create:all --trace
+          rake db:drop --trace 2>&1
+          rake db:create:all --trace 2>&1
         CMD
-        trace "DB CREATE -> " + `#{cmd}`
+        trace "DB CREATE env: #{ENV['RAILS_ENV']} #{ENV['TEST_ENV_NUMBER']} -> " + `#{cmd}`
         
         ENV['SKIP_ROLLOUT_FETCH'] = "true"
         
