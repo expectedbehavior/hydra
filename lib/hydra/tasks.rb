@@ -87,6 +87,7 @@ module Hydra #:nodoc:
       @serial = false
       @listeners = [Hydra::Listener::ProgressBar.new]
       @show_time = true
+      @environment = ENV['RAILS_ENV']
 
       @runner_opts = ""
 
