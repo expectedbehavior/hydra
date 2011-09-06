@@ -51,9 +51,9 @@ module Hydra #:nodoc:
         ENV['RAILS_ENV'] = "development"
 #         cmd = "rake db:test:clone_structure --trace"
         cmd = <<-CMD
-          rake db:test:load_structure --trace
+          rake db:test:load_structure --trace 2>&1
         CMD
-        trace "DB LOAD STRUCTURE -> " + `#{cmd}`
+        trace "DB LOAD STRUCTURE env: #{ENV['RAILS_ENV']} #{ENV['TEST_ENV_NUMBER']} -> " + `#{cmd}`
         ENV['RAILS_ENV'] = old_env
         require 'tempfile'
         
