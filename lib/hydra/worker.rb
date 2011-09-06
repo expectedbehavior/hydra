@@ -91,11 +91,11 @@ module Hydra #:nodoc:
 
     def boot_runners(num_runners) #:nodoc:
       trace "Booting #{num_runners} Runners"
-      num_runners.times do
+      num_runners.times do |runner_num|
         pipe = Hydra::Pipe.new(:verbose => @verbose)
         child = SafeFork.fork do
           pipe.identify_as_child
-          Hydra::Runner.new(:io => pipe, :verbose => @verbose, :runner_opts => @runner_opts, :runner_listeners => @runner_event_listeners, :runner_log_file => @runner_log_file, :remote => @remote)
+          Hydra::Runner.new(:io => pipe, :verbose => @verbose, :runner_opts => @runner_opts, :runner_listeners => @runner_event_listeners, :runner_log_file => @runner_log_file, :remote => @remote, :runner_num => runner_num)
           trace "After runner, before runner exit"
           trace Thread.list.inspect
           at_exit { trace "at_exit" }

@@ -26,6 +26,7 @@ module Hydra #:nodoc:
       @verbose = opts.fetch(:verbose) { false }
       @remote = opts.fetch(:remote) { false }      
       @event_listeners = Array( opts.fetch( :runner_listeners ) { nil } )
+      @runner_num = opts[:runner_num]
 
       $stdout.sync = true
 
