@@ -22,7 +22,7 @@ module Hydra #:nodoc:
         remote_info = @remote ? "#{REMOTE_IDENTIFIER} #{@remote} " : ''
         str = str.gsub /\n/, "\n#{remote_info}"
         str = "#{Time.now.to_f} #{remote_info}#{self.class._traceable_prefix}| #{str}"
-        IO.popen("logger", "w") { |io| io.puts str }
+        IO.popen("logger", "w") { |logger_io| logger_io.puts str }
         $stdout.puts str
       end
     end
