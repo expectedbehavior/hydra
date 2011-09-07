@@ -181,10 +181,13 @@ module Hydra #:nodoc:
         Thread.new do
           worker[:io].write(Shutdown.new) if worker[:io]
           trace "worker[:io]: #{worker[:io].inspect}"
-          worker[:io].close if worker[:io]
+          begin
+            worker[:io].close if worker[:io]
+          rescue IOError
+          end
+          worker[:listener].exit if worker[:listener]
         end
       end.each { |thread| thread.join }
-      @listeners.each{|t| t.exit}
     end
 
     def process_messages
@@ -198,6 +201,7 @@ module Hydra #:nodoc:
            if worker.fetch('type') { 'local' }.to_s == 'ssh'
              worker = boot_ssh_worker(worker)
              @workers << worker
+             worker[:listener] = Thread.current
            end
           while true
             begin
