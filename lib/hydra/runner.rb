@@ -82,6 +82,8 @@ port #{ENV['REDIS_PORT']}
 loglevel debug
 pidfile #{pid_file_name}
 logfile #{log_file_name}
+# trying to resolve EAGAIN redis connections errors
+timeout 0
 # so it creates the pid file
 daemonize yes
           CONFIG
