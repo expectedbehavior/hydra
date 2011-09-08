@@ -21,7 +21,10 @@ module Hydra #:nodoc:
         return unless @verbose
         remote_info = @remote ? "#{REMOTE_IDENTIFIER} #{@remote} " : ''
         str = str.gsub /\n/, "\n#{remote_info}"
-        str = "#{Time.now.to_f} #{remote_info}#{self.class._traceable_prefix}| #{str}"
+        more_info = ""
+        more_info << " test env number: #{ENV['TEST_ENV_NUMBER']}" if ENV['TEST_ENV_NUMBER']
+        more_info << " runner num: #{@runner_num}" if @runner_num
+        str = "#{Time.now.to_f} #{Time.now.to_s} #{remote_info}#{self.class._traceable_prefix}#{more_info}| #{str}"
         IO.popen("logger", "w") { |logger_io| logger_io.puts str }
         $stdout.puts str
       end
