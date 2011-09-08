@@ -58,93 +58,42 @@ module Hydra #:nodoc:
         require 'tempfile'
         
         
+        srand # since we've forked we need to reseed
         
-        r, w = IO.pipe
-        @memcached_pid = fork do
-          w.close
-          
-          i = (Process.pid % 50_000) + 10_000
-          cmd = "memcached -p #{i}"
-          puts "running: #{cmd}"
-          child_pid = fork do
-            exec cmd
-          end
-          
-          Thread.new do
-            begin
-              r.read
-            ensure
-              Process.kill "TERM", child_pid
-              exit
-            end
-          end
-          
-          Process.wait child_pid
-          exit
+        
+        
+        pid_file_name = "#{Dir.pwd}/log/runner_#{@runner_num}_memcached.pid"
+        log_file_name = "#{Dir.pwd}/log/memcached_#{@runner_num.to_s}.log"
+        run_dependent_process(pid_file_name, log_file_name) do
+          ENV['MEMCACHED_PORT'] = (10_000 + rand(20_000)).to_s
+          "memcached -vvvd -P #{pid_file_name} -p #{ENV['MEMCACHED_PORT']}"
         end
-        r.close
-#         at_exit { w.close }
-        
-        ENV['MEMCACHED_PORT'] = ((@memcached_pid % 50_000) + 10_000).to_s
-        trace "runner memcached port: #{ENV['MEMCACHED_PORT']}"
         
 
-        r, w = IO.pipe
-        @redis_pid = fork do
-          w.close
-          
-          i = (Process.pid % 50_000) + 10_000
-          
-          
-#           raise 'First fork failed' if (pid = fork) == -1
-#           exit unless pid.nil?
 
-#           Process.setsid
-#           raise 'Second fork failed' if (pid = fork) == -1
-#           exit unless pid.nil?
-#           puts "Daemon pid: #{Process.pid}" # Or save it somewhere, etc.
-
-#           Dir.chdir '/'
-#           File.umask 0000
+        pid_file_name = "#{Dir.pwd}/log/runner_#{@runner_num}_redis.pid"
+        log_file_name = "#{Dir.pwd}/log/redis_#{@runner_num.to_s}.log"
+        config_file = Tempfile.new("redis-hydra")
+        run_dependent_process(pid_file_name, log_file_name) do
+          ENV['REDIS_PORT'] = (10_000 + rand(20_000)).to_s
           
+          config_contents = <<-CONFIG
+port #{ENV['REDIS_PORT']}
+loglevel debug
+pidfile #{pid_file_name}
+logfile #{log_file_name}
+# so it creates the pid file
+daemonize yes
+          CONFIG
+          trace "runner #{@runner_num.to_s} redis config: #{config_contents}"
+          config_file.puts config_contents
+          config_file.flush
           
-          
-          
-          cmd = "echo 'port #{i}' | redis-server -"
-          puts "running: #{cmd}"
-#           child_pid = fork do
-#             exec cmd
-#           end
-          io = IO.popen("redis-server -", "r+")
-          child_pid = io.pid
-          io.puts "port #{i}"
-          io.close_write
-
-          Thread.new do
-            loop do
-              trace io.gets
-            end
-          end
-
-          Thread.new do
-            begin
-              r.read
-            ensure
-              trace "killing TERM #{child_pid}"
-              Process.kill "TERM", child_pid
-              exit
-            end
-          end
-          
-          Process.wait child_pid
-          exit
+          "redis-server #{config_file.path}"
         end
-        r.close
-#         Process.detach @redis_pid
-#         at_exit { w.close }
         
-        ENV['REDIS_PORT'] = ((@redis_pid % 50_000) + 10_000).to_s
-        trace "runner redis port: #{ENV['REDIS_PORT']}"
+        
+        
         
       rescue Exception => e
         trace "Error creating test DB: #{e}"
@@ -170,6 +119,46 @@ module Hydra #:nodoc:
       rescue => ex
         trace ex.to_s
         raise ex
+      end
+    end
+    
+    def run_dependent_process(pid_file_name, log_file_name, &command_block)
+      if File.exist?(pid_file_name)
+        pid = File.read(pid_file_name).strip.to_i
+        if pid > 0
+          while(Process.kill(0, pid) rescue nil)
+            Process.kill("TERM", pid)
+            sleep 0.1
+          end
+        end
+      end
+      
+      Thread.new do
+        loop do
+          cmd = yield
+          trace "runner #{@runner_num} port: #{ENV['MEMCACHED_PORT']}, cmd: #{cmd}"
+          puts "running: #{cmd}"
+          child_pid = fork do
+            file = File.open(log_file_name, "w")
+            STDOUT.reopen(file)
+            STDERR.reopen(file)
+            exec cmd
+          end
+          Process.wait child_pid
+          
+          sleep 0.1
+          if File.exist?(pid_file_name)
+            pid = File.read(pid_file_name).strip.to_i
+            if pid > 0
+              at_exit do
+                Process.kill("TERM", pid)
+                sleep 0.1
+                Process.kill("KILL", pid)
+              end
+              Process.wait pid
+            end
+          end
+        end
       end
     end
 
