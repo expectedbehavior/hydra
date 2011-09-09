@@ -62,36 +62,36 @@ module Hydra #:nodoc:
         
         
         
-        pid_file_name = "#{Dir.pwd}/log/runner_#{@runner_num}_memcached.pid"
-        log_file_name = "#{Dir.pwd}/log/memcached_#{@runner_num.to_s}.log"
-        run_dependent_process(pid_file_name, log_file_name) do
+        memcached_pid_file_name = "#{Dir.pwd}/log/runner_#{@runner_num}_memcached.pid"
+        memcached_log_file_name = "#{Dir.pwd}/log/memcached_#{@runner_num.to_s}.log"
+        run_dependent_process(memcached_pid_file_name, memcached_log_file_name) do
           ENV['MEMCACHED_PORT'] = (10_000 + rand(20_000)).to_s
-          "memcached -vvvd -P #{pid_file_name} -p #{ENV['MEMCACHED_PORT']}"
+          "memcached -vvvd -P #{memcached_pid_file_name} -p #{ENV['MEMCACHED_PORT']}"
         end
         
 
 
-        pid_file_name = "#{Dir.pwd}/log/runner_#{@runner_num}_redis.pid"
-        log_file_name = "#{Dir.pwd}/log/redis_#{@runner_num.to_s}.log"
-        config_file = Tempfile.new("redis-hydra")
-        run_dependent_process(pid_file_name, log_file_name) do
+        redis_pid_file_name = "#{Dir.pwd}/log/runner_#{@runner_num}_redis.pid"
+        redis_log_file_name = "#{Dir.pwd}/log/redis_#{@runner_num.to_s}.log"
+        redis_config_file = Tempfile.new("redis-hydra")
+        run_dependent_process(redis_pid_file_name, redis_log_file_name) do
           ENV['REDIS_PORT'] = (10_000 + rand(20_000)).to_s
           
           config_contents = <<-CONFIG
 port #{ENV['REDIS_PORT']}
 loglevel debug
-pidfile #{pid_file_name}
-logfile #{log_file_name}
+pidfile #{redis_pid_file_name}
+logfile #{redis_log_file_name}
 # trying to resolve EAGAIN redis connections errors
 timeout 0
 # so it creates the pid file
 daemonize yes
           CONFIG
           trace "runner #{@runner_num.to_s} redis config: #{config_contents}"
-          config_file.puts config_contents
-          config_file.flush
+          redis_config_file.puts config_contents
+          redis_config_file.flush
           
-          "redis-server #{config_file.path}"
+          "redis-server #{redis_config_file.path}"
         end
         
         
@@ -125,6 +125,7 @@ daemonize yes
     end
     
     def run_dependent_process(pid_file_name, log_file_name, &command_block)
+      trace "run_dependent_process start #{@runner_num} pid: #{pid_file_name}, log: #{log_file_name}"
       if File.exist?(pid_file_name)
         pid = File.read(pid_file_name).strip.to_i
         if pid > 0
@@ -135,10 +136,12 @@ daemonize yes
         end
       end
       
+      trace "run_dependent_process before thread #{@runner_num} pid: #{pid_file_name}, log: #{log_file_name}"
       Thread.new do
+        trace "run_dependent_process inside thread #{@runner_num} pid: #{pid_file_name}, log: #{log_file_name}"
         loop do
           cmd = yield
-          trace "runner #{@runner_num} port: #{ENV['MEMCACHED_PORT']}, cmd: #{cmd}"
+          trace "runner #{@runner_num} cmd: #{cmd}"
           puts "running: #{cmd}"
           child_pid = fork do
             file = File.open(log_file_name, "w")
