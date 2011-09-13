@@ -303,7 +303,7 @@ daemonize yes
       log_file = hydra_output.path
       old_env = ENV['RAILS_ENV']
       ENV.delete('RAILS_ENV')
-      cmd = "bundle exec spec #{@runner_opts} --format specdoc --require hydra/spec/hydra_formatter --format Spec::Runner::Formatter::HydraFormatter:#{log_file} #{file} 2>&1 | tee -a /tmp/spec_runner_#{@runner_num}.log"
+      cmd = "bundle exec spec #{@runner_opts} --require hydra/spec/hydra_formatter --format Spec::Runner::Formatter::HydraFormatter:#{log_file} #{file} 2>&1 | tee -a /tmp/spec_runner_#{@runner_num}.log"
       trace "================================================================================================================================================================================================================================================================running: #{cmd}"
       stdout = `#{cmd}`
       status = $?
