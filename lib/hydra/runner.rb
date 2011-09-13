@@ -157,7 +157,7 @@ daemonize yes
 #           end
           
           child_pid = fork do
-            file = File.open(log_file_name, "w")
+            file = File.open(log_file_name + "-out", "w")
             STDOUT.reopen(file)
             STDERR.reopen(file)
             exec cmd
