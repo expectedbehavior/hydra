@@ -20,6 +20,7 @@ module Hydra #:nodoc:
     # * :verbose
     #   * Set to true to see lots of Hydra output (for debugging)
     def initialize(worker_opts, sync_opts, verbose = false)
+      trace "  Sync:   (#{sync_opts.inspect})"
       worker_opts ||= {}
       worker_opts.stringify_keys!
       @verbose = verbose

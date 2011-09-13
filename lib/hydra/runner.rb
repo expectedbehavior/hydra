@@ -1,6 +1,7 @@
 # require 'test/unit'
 # require 'test/unit/testresult'
 # Test::Unit.run = true
+# require 'thread'
 
 module Hydra #:nodoc:
   # Hydra class responsible for running test files.
@@ -15,6 +16,7 @@ module Hydra #:nodoc:
     traceable('RUNNER')
 
     DEFAULT_LOG_FILE = 'hydra-runner.log'
+#     LOCK = Mutex.new
 
     # Boot up a runner. It takes an IO object (generally a pipe from its
     # parent) to send it messages on which files to execute.
@@ -143,13 +145,26 @@ daemonize yes
           cmd = yield
           trace "runner #{@runner_num} cmd: #{cmd}"
           puts "running: #{cmd}"
+          
+          # maybe the fork below is causing the redis issues?
+          # synchronize
+#           LOCK.synchronize do
+#           # reopen outputs
+#             file = File.open(log_file_name, "w")
+#             STDOUT.reopen(file)
+#             STDERR.reopen(file)
+# #           system cmd
+#           end
+          
           child_pid = fork do
             file = File.open(log_file_name, "w")
             STDOUT.reopen(file)
             STDERR.reopen(file)
             exec cmd
           end
+          trace "run_dependent_process before wait #{@runner_num} child_pid: #{child_pid}, pid: #{pid_file_name}, log: #{log_file_name}"
           Process.wait child_pid
+          trace "run_dependent_process after wait #{@runner_num} child_pid: #{child_pid}, pid: #{pid_file_name}, log: #{log_file_name}"
           
           sleep 0.1
           if File.exist?(pid_file_name)
@@ -288,7 +303,7 @@ daemonize yes
       log_file = hydra_output.path
       old_env = ENV['RAILS_ENV']
       ENV.delete('RAILS_ENV')
-      cmd = "bundle exec spec #{@runner_opts} --require hydra/spec/hydra_formatter --format Spec::Runner::Formatter::HydraFormatter:#{log_file} #{file} 2>&1 | tee -a /tmp/spec.log"
+      cmd = "bundle exec spec #{@runner_opts} --format specdoc --require hydra/spec/hydra_formatter --format Spec::Runner::Formatter::HydraFormatter:#{log_file} #{file} 2>&1 | tee -a /tmp/spec_runner_#{@runner_num}.log"
       trace "================================================================================================================================================================================================================================================================running: #{cmd}"
       stdout = `#{cmd}`
       status = $?
