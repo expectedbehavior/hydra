@@ -163,7 +163,7 @@ module Hydra #:nodoc:
     end
 
     def boot_ssh_worker(worker)
-#       sync = Sync.new(worker, @sync, @verbose)
+      sync = Sync.new(worker, @sync, @verbose)
 
       runners = worker.fetch('runners') { raise "You must specify the number of runners"  }
       command = worker.fetch('command') {

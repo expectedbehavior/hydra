@@ -37,7 +37,7 @@ module Hydra #:nodoc:
       trace "  Worker: (#{worker_opts.inspect})"
       trace "  Sync:   (#{sync_opts.inspect})"
 
-      sync
+#       sync
     end
 
     def sync
@@ -90,7 +90,7 @@ module Hydra #:nodoc:
         @listeners << Thread.new do
           begin
             trace "Syncing #{worker_opts.inspect}"
-            Sync.new worker_opts, @sync, @verbose
+            Sync.new(worker_opts, @sync, @verbose).sync
           rescue 
             trace "Syncing failed [#{worker_opts.inspect}]\n#{$!.message}\n#{$!.backtrace}"
           end
