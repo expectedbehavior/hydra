@@ -83,14 +83,23 @@ module Hydra #:nodoc:
           end
           
           config_contents = <<-CONFIG
+# written #{Time.now.to_f.to_s}   #{Time.now.to_s}
 port #{ENV['REDIS_PORT']}
 loglevel debug
 pidfile #{redis_pid_file_name}
 logfile #{redis_log_file_name}
-# trying to resolve EAGAIN redis connections errors
-timeout 0
 # so it creates the pid file
 daemonize yes
+# trying to resolve EAGAIN redis connections errors, my latest thought is that it coincides with dumping the redis db to disk, so let's turn that off
+timeout 0
+# databases 16
+# rdbcompression yes
+# dbfilename dump_#{@runner_num.to_s}.rdb
+# dir #{File.dirname(redis_pid_file_name)}
+appendonly no
+appendfsync no
+glueoutputbuf yes
+vm-enabled no
           CONFIG
           trace "runner #{@runner_num.to_s} redis config: #{config_contents}"
           redis_config_file = File.open("#{Dir.pwd}/tmp/redis_#{@runner_num.to_s}_config", "w") # Tempfile.new("redis-hydra")
