@@ -35,34 +35,32 @@ module Hydra #:nodoc:
       @runner_opts = opts.fetch(:runner_opts) { "" }
 
       trace 'Creating test database'
-      ENV['TEST_ENV_NUMBER'] = Process.pid.to_s
+      parent_pid = Process.pid
+      ENV['TEST_ENV_NUMBER'] = parent_pid.to_s
       begin
 #         Rake::Task['db:drop'].invoke        
 #         Rake::Task['db:create:all'].invoke        
 #         trace ``
-
-        cmd = <<-CMD
-          rake db:drop --trace 2>&1
-          rake db:create:all --trace 2>&1
-        CMD
-        trace "DB CREATE env: #{ENV['RAILS_ENV']} #{ENV['TEST_ENV_NUMBER']} -> " + `#{cmd}`
         
-        ENV['SKIP_ROLLOUT_FETCH'] = "true"
+        # this should really clean up after the runner dies
+        fork do
+          fork do
+#             Process.wait parent_pid
+            while (Process.kill(0, parent_pid) rescue nil)
+              sleep 1
+            end
+            cmd = <<-CMD
+              rake db:drop --trace 2>&1
+            CMD
+            trace "DB DROP FORK env: #{ENV['RAILS_ENV']} #{ENV['TEST_ENV_NUMBER']} -> " + `#{cmd}`
+            # also kill redis and memcached?
+          end
+        end
         
-        old_env = ENV['RAILS_ENV']
-        ENV['RAILS_ENV'] = "development"
-#         cmd = "rake db:test:clone_structure --trace"
-        cmd = <<-CMD
-          rake db:test:load_structure --trace 2>&1
-        CMD
-        trace "DB LOAD STRUCTURE env: #{ENV['RAILS_ENV']} #{ENV['TEST_ENV_NUMBER']} -> " + `#{cmd}`
-        ENV['RAILS_ENV'] = old_env
-        require 'tempfile'
+        
         
         
         srand # since we've forked we need to reseed
-        
-        
         
         memcached_pid_file_name = "#{Dir.pwd}/log/runner_#{@runner_num}_memcached.pid"
         memcached_log_file_name = "#{Dir.pwd}/log/memcached_#{@runner_num.to_s}.log"
@@ -109,6 +107,26 @@ vm-enabled no
           "redis-server #{redis_config_file.path}"
         end
         
+        
+        sleep 10
+
+        cmd = <<-CMD
+          rake db:drop --trace 2>&1
+          rake db:create:all --trace 2>&1
+        CMD
+        trace "DB CREATE env: #{ENV['RAILS_ENV']} #{ENV['TEST_ENV_NUMBER']} -> " + `#{cmd}`
+        
+        ENV['SKIP_ROLLOUT_FETCH'] = "true"
+        
+        old_env = ENV['RAILS_ENV']
+        ENV['RAILS_ENV'] = "development"
+#         cmd = "rake db:test:clone_structure --trace"
+        cmd = <<-CMD
+          rake db:test:load_structure --trace 2>&1
+        CMD
+        trace "DB LOAD STRUCTURE env: #{ENV['RAILS_ENV']} #{ENV['TEST_ENV_NUMBER']} -> " + `#{cmd}`
+        ENV['RAILS_ENV'] = old_env
+        require 'tempfile'
         
         
         
