@@ -1,7 +1,7 @@
 # require 'test/unit'
 # require 'test/unit/testresult'
 # Test::Unit.run = true
-# require 'thread'
+require 'thread'
 
 module Hydra #:nodoc:
   # Hydra class responsible for running test files.
@@ -16,7 +16,7 @@ module Hydra #:nodoc:
     traceable('RUNNER')
 
     DEFAULT_LOG_FILE = 'hydra-runner.log'
-#     LOCK = Mutex.new
+    LOCK = Mutex.new
 
     # Boot up a runner. It takes an IO object (generally a pipe from its
     # parent) to send it messages on which files to execute.
@@ -67,7 +67,9 @@ module Hydra #:nodoc:
         memcached_pid_file_name = "#{Dir.pwd}/log/runner_#{@runner_num}_memcached.pid"
         memcached_log_file_name = "#{Dir.pwd}/log/memcached_#{@runner_num.to_s}.log"
         run_dependent_process(memcached_pid_file_name, memcached_log_file_name) do
-          ENV['MEMCACHED_PORT'] = (10_000 + rand(20_000)).to_s
+          LOCK.synchronize do
+            ENV['MEMCACHED_PORT'] = (10_000 + rand(20_000)).to_s
+          end
           "memcached -vvvd -P #{memcached_pid_file_name} -p #{ENV['MEMCACHED_PORT']}"
         end
         
@@ -75,9 +77,10 @@ module Hydra #:nodoc:
 
         redis_pid_file_name = "#{Dir.pwd}/log/runner_#{@runner_num}_redis.pid"
         redis_log_file_name = "#{Dir.pwd}/log/redis_#{@runner_num.to_s}.log"
-        redis_config_file = Tempfile.new("redis-hydra")
         run_dependent_process(redis_pid_file_name, redis_log_file_name) do
-          ENV['REDIS_PORT'] = (10_000 + rand(20_000)).to_s
+          LOCK.synchronize do
+            ENV['REDIS_PORT'] = (10_000 + rand(20_000)).to_s
+          end
           
           config_contents = <<-CONFIG
 port #{ENV['REDIS_PORT']}
@@ -90,6 +93,7 @@ timeout 0
 daemonize yes
           CONFIG
           trace "runner #{@runner_num.to_s} redis config: #{config_contents}"
+          redis_config_file = File.open("#{Dir.pwd}/tmp/redis_#{@runner_num.to_s}_config", "w") # Tempfile.new("redis-hydra")
           redis_config_file.puts config_contents
           redis_config_file.flush
           
