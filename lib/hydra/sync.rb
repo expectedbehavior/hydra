@@ -49,6 +49,7 @@ module Hydra #:nodoc:
       exclude_opts = @exclude_paths.inject(''){|memo, path| memo += "--exclude=#{path} "}
 
       rsync_command = [
+        'time',
         'rsync',
         '-avz',
         '--delete',
