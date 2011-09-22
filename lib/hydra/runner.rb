@@ -175,13 +175,15 @@ vm-enabled no
           end
         end
       end
+      trace "run_dependent_process after killing old #{@runner_num} pid: #{pid_file_name}, log: #{log_file_name}, remaining processes:#{`ps aux | grep '(redis-server /zynga|memcached -vvv)' | grep -v grep`}"
       
       trace "run_dependent_process before thread #{@runner_num} pid: #{pid_file_name}, log: #{log_file_name}"
       Thread.new do
         trace "run_dependent_process inside thread #{@runner_num} pid: #{pid_file_name}, log: #{log_file_name}"
         loop do
           cmd = yield
-          trace "runner #{@runner_num} cmd: #{cmd}"
+#           cmd = "strace -fF -ttt -s 200 #{cmd}"
+          trace "run_dependent_process before fork runner #{@runner_num} cmd: #{cmd}"
           puts "running: #{cmd}"
           
           # maybe the fork below is causing the redis issues?
@@ -200,22 +202,42 @@ vm-enabled no
             STDERR.reopen(file)
             exec cmd
           end
-          trace "run_dependent_process before wait #{@runner_num} child_pid: #{child_pid}, pid: #{pid_file_name}, log: #{log_file_name}"
+          trace "run_dependent_process before exec wait #{@runner_num} child_pid: #{child_pid}, pid: #{pid_file_name}, log: #{log_file_name}"
           Process.wait child_pid
-          trace "run_dependent_process after wait #{@runner_num} child_pid: #{child_pid}, pid: #{pid_file_name}, log: #{log_file_name}"
+          trace "run_dependent_process after exec wait #{@runner_num} child_pid: #{child_pid}, pid: #{pid_file_name}, log: #{log_file_name}"
           
-          sleep 0.1
+          trace "run_dependent_process before pid file wait read #{@runner_num} child_pid: #{child_pid}, pid: #{pid_file_name}, log: #{log_file_name}"
+#           sleep 0.1
+          
+          # Wait for a new pid file if the old one is in place
+          10.times do
+            break if File.exist?(pid_file_name) && File.mtime(pid_file_name) > (Time.now - 5)
+            sleep 0.2
+          end
           if File.exist?(pid_file_name)
             pid = File.read(pid_file_name).strip.to_i
             if pid > 0
-              at_exit do
-                Process.kill("TERM", pid)
-                sleep 0.1
-                Process.kill("KILL", pid)
+              if (Process.kill(0, pid) rescue nil)
+                at_exit do
+                  Process.kill("TERM", pid)
+                  sleep 0.1
+                  Process.kill("KILL", pid)
+                end
               end
-              Process.wait pid
+              trace "run_dependent_process before pid file wait actual wait #{@runner_num} child_pid: #{child_pid}, pid: #{pid_file_name}, log: #{log_file_name}"
+#               begin
+#                 Process.wait pid
+              # don't want to rescue ECHILD because that's complaining the pid isn't a child
+#               rescue Errno::ECHILD
+#               end
+              
+              while (Process.kill(0, pid) rescue nil)
+                sleep 0.5
+              end
+              
             end
           end
+          trace "run_dependent_process after pid file wait read #{@runner_num} child_pid: #{child_pid}, pid: #{pid_file_name}, log: #{log_file_name}"
         end
       end
     end
