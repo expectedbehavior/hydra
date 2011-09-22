@@ -162,9 +162,16 @@ vm-enabled no
       if File.exist?(pid_file_name)
         pid = File.read(pid_file_name).strip.to_i
         if pid > 0
-          while(Process.kill(0, pid) rescue nil)
-            Process.kill("TERM", pid)
-            sleep 0.1
+          trace "run_dependent_process before killing loop #{@runner_num} pid: #{pid}, pid: #{pid_file_name}, log: #{log_file_name}"
+          ["TERM", "KILL"].each do |signal|
+            tries = 20
+            while(Process.kill(0, pid) rescue nil)
+              trace "run_dependent_process before kill #{@runner_num} pid: #{pid}, pid: #{pid_file_name}, log: #{log_file_name}"
+              Process.kill(signal, pid)
+              sleep 0.1
+              tries -= 1
+              break if tries == 0
+            end
           end
         end
       end
