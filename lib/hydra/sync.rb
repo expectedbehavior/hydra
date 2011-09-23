@@ -58,6 +58,7 @@ module Hydra #:nodoc:
         "-e \"ssh #{@ssh_opts}\"",
         "#{@connect}:#{@remote_dir}"
       ].join(" ")
+      rsync_command = "(#{rsync_command}) 2>&1" # capture all output
       trace rsync_command
       trace `#{rsync_command}`
     end

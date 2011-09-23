@@ -175,7 +175,7 @@ vm-enabled no
           end
         end
       end
-      trace "run_dependent_process after killing old #{@runner_num} pid: #{pid_file_name}, log: #{log_file_name}, remaining processes:#{`ps aux | grep '(redis-server /zynga|memcached -vvv)' | grep -v grep`}"
+      trace "run_dependent_process after killing old #{@runner_num} pid: #{pid_file_name}, log: #{log_file_name}, remaining processes:#{`pgrep -fl '(redis-server /zynga|memcached -vvv)'`}"
       
       trace "run_dependent_process before thread #{@runner_num} pid: #{pid_file_name}, log: #{log_file_name}"
       Thread.new do
@@ -487,12 +487,18 @@ vm-enabled no
 
     def redirect_output file_name
       begin
-        $stderr = $stdout =  File.open(file_name, 'a')
+        file = File.open(file_name, 'a')
+        $stdout.reopen(file)
+        $stderr.reopen(file)
       rescue
         # it should always redirect output in order to handle unexpected interruption
         # successfully
-        $stderr = $stdout =  File.open(DEFAULT_LOG_FILE, 'a')
+        file = File.open(DEFAULT_LOG_FILE, 'a')
+        $stdout.reopen(file)
+        $stderr.reopen(file)
       end
+      $stdout.sync = true
+      $stderr.sync = true
     end
   end
 end

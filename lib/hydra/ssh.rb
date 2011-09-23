@@ -14,7 +14,7 @@ module Hydra #:nodoc:
   #
   # Note that what ever process you run should respond with Hydra messages.
   class SSH
-    traceable('PIPE')
+    traceable('SSH')
     include Open3
     include Hydra::MessagingIO
 
@@ -28,18 +28,18 @@ module Hydra #:nodoc:
     # list all the files.
     def initialize(connection_options, directory, command, options = {})
       super(options)
-      puts "sshing..."
+      trace "sshing..."
       @writer, @reader, @error = popen3("ssh -tt #{connection_options}")
       @writer.write("echo connected\n")
-      puts "mkdir..."
+      trace "mkdir..."
       @writer.write("mkdir -p #{directory}\n")
       @writer.write("echo mkdired\n")
-      puts "cd..."
+      trace "cd..."
       @writer.write("cd #{directory}\n")
       @writer.write("echo cded\n")
-      puts "writing command: #{command}"
+      trace "writing command: #{command}"
       res = @writer.write(command+"\n")
-      puts "written..."
+      trace "written..."
       res
     end
 

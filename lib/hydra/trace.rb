@@ -32,7 +32,6 @@ module Hydra #:nodoc:
           str = "#{Time.now.to_f} #{Time.now.to_s} #{remote_info}#{self.class._traceable_prefix}#{more_info}| #{str}"
           IO.popen("logger", "w") { |logger_io| logger_io.puts str }
           $stdout.puts str
-          $stdout.flush
         end
       end
     end
