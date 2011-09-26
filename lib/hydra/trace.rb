@@ -1,10 +1,10 @@
-require 'thread'
+require 'monitor'
 module Hydra #:nodoc:
   # Trace output when in verbose mode.
   module Trace
     REMOTE_IDENTIFIER = 'REMOTE'
     
-    TRACE_LOCK = Mutex.new
+    TRACE_LOCK = Monitor.new
 
     module ClassMethods
       # Make a class traceable. Takes one parameter,
@@ -30,8 +30,8 @@ module Hydra #:nodoc:
           more_info << " runner num: #{@runner_num}" if @runner_num
           more_info << " thread: #{Thread.current.inspect}"
           str = "#{Time.now.to_f} #{Time.now.to_s} #{remote_info}#{self.class._traceable_prefix}#{more_info}| #{str}"
-          IO.popen("logger", "w") { |logger_io| logger_io.puts str }
           $stdout.puts str
+          IO.popen("logger", "w") { |logger_io| logger_io.puts str }
         end
       end
     end

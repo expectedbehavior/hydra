@@ -247,6 +247,7 @@ module Hydra #:nodoc:
     def trap_signals
       @signals.each do |signal|
         Signal.trap signal do
+          Hydra::Trace::TRACE_LOCK.unlock
           trace "Caught signal #{signal}, shutting down."
           shutdown_all_workers
           exit 1
