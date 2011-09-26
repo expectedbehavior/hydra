@@ -4,7 +4,7 @@ module Hydra #:nodoc:
   module Trace
     REMOTE_IDENTIFIER = 'REMOTE'
     
-    LOCK = Mutex.new
+    TRACE_LOCK = Mutex.new
 
     module ClassMethods
       # Make a class traceable. Takes one parameter,
@@ -22,7 +22,7 @@ module Hydra #:nodoc:
       # Checks to ensure we're running verbosely.
       def trace(str)
         return unless @verbose
-        LOCK.synchronize do
+        TRACE_LOCK.synchronize do
           remote_info = @remote ? "#{REMOTE_IDENTIFIER} #{@remote} " : ''
           str = str.gsub /\n/, "\n#{remote_info}"
           more_info = ""
