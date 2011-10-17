@@ -81,7 +81,7 @@ module Hydra #:nodoc:
         memcached_log_file_name = "#{Dir.pwd}/log/memcached_#{@runner_num.to_s}.log"
         run_dependent_process(memcached_pid_file_name, memcached_log_file_name) do
           LOCK.synchronize do
-            ENV['MEMCACHED_PORT'] = (10_000 + rand(20_000)).to_s
+            ENV['MEMCACHED_PORT'] = find_open_port.to_s
           end
           "memcached -vvvd -P #{memcached_pid_file_name} -p #{ENV['MEMCACHED_PORT']}"
         end
@@ -92,7 +92,7 @@ module Hydra #:nodoc:
         redis_log_file_name = "#{Dir.pwd}/log/redis_#{@runner_num.to_s}.log"
         run_dependent_process(redis_pid_file_name, redis_log_file_name) do
           LOCK.synchronize do
-            ENV['REDIS_PORT'] = (10_000 + rand(20_000)).to_s
+            ENV['REDIS_PORT'] = find_open_port.to_s
           end
           
           config_contents = <<-CONFIG
@@ -257,9 +257,39 @@ vm-enabled no
               
             end
           end
-          trace "run_dependent_process after pid file wait read #{@runner_num} child_pid: #{child_pid}, pid: #{pid_file_name}, log: #{log_file_name}"
+          trace "run_dependent_process after pid file wait read runner: #{@runner_num} child_pid: #{child_pid}, pid: #{pid_file_name}, log: #{log_file_name}"
         end
       end
+    end
+    
+    def find_open_port
+      100.times do
+        port = 10_000 + rand(20_000)
+        trace "runner #{@runner_num.to_s} checking open port: #{port}"
+        unless is_port_in_use?(port)
+          trace "runner #{@runner_num.to_s} found open port: #{port}"
+          return port
+        end
+      end
+      raise "Couldn't find open port"
+    end
+    
+    require 'socket'
+    def is_port_in_use?(port, ip = "localhost")
+      begin
+        SystemTimer.timeout_after(1) do
+          begin
+            s = TCPSocket.new(ip, port)
+            s.close
+            return true
+          rescue Errno::ECONNREFUSED, Errno::EHOSTUNREACH
+            return false
+          end
+        end
+      rescue Timeout::Error
+      end
+     
+      return true
     end
 
     def reg_trap_sighup
