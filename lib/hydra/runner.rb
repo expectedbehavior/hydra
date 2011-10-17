@@ -43,18 +43,32 @@ module Hydra #:nodoc:
 #         Rake::Task['db:create:all'].invoke        
 #         trace ``
         
+        trace "DB DROP FORK before fork env: #{ENV['RAILS_ENV']} #{ENV['TEST_ENV_NUMBER']} parent pid: #{parent_pid}, my pid: #{Process.pid}"
         # this should really clean up after the runner dies
         fork do
           fork do
-#             Process.wait parent_pid
-            while (Process.kill(0, parent_pid) rescue nil)
-              sleep 1
+            begin
+              # don't redirect yet, because we're tee'ing the worker
+  #             STDIN.reopen '/dev/null'
+  #             STDOUT.reopen '/dev/null', 'a'
+  #             STDERR.reopen STDOUT
+              while (Process.kill(0, parent_pid) rescue nil)
+                trace "DB DROP FORK loop env: #{ENV['RAILS_ENV']} #{ENV['TEST_ENV_NUMBER']} parent pid: #{parent_pid}, my pid: #{Process.pid}"
+                sleep 1
+              end
+              cmd = <<-CMD
+                rake db:drop --trace 2>&1
+              CMD
+              trace "DB DROP FORK after loop env: #{ENV['RAILS_ENV']} #{ENV['TEST_ENV_NUMBER']} parent pid: #{parent_pid}, my pid: #{Process.pid}"
+              trace "DB DROP FORK run env: #{ENV['RAILS_ENV']} #{ENV['TEST_ENV_NUMBER']} parent pid: #{parent_pid}, my pid: #{Process.pid} -> " + `#{cmd}`
+              # also kill redis and memcached?
+            rescue Exception => e
+              puts "DB DROP FORK exception env: #{ENV['RAILS_ENV']} #{ENV['TEST_ENV_NUMBER']} parent pid: #{parent_pid}, my pid: #{Process.pid}, exception: #{e.inspect}"
+              trace "DB DROP FORK exception env: #{ENV['RAILS_ENV']} #{ENV['TEST_ENV_NUMBER']} parent pid: #{parent_pid}, my pid: #{Process.pid}, exception: #{e.inspect}"
+            ensure
+              puts "DB DROP FORK ensure env: #{ENV['RAILS_ENV']} #{ENV['TEST_ENV_NUMBER']} parent pid: #{parent_pid}, my pid: #{Process.pid}, exception: #{$!.inspect}"
+              trace "DB DROP FORK ensure env: #{ENV['RAILS_ENV']} #{ENV['TEST_ENV_NUMBER']} parent pid: #{parent_pid}, my pid: #{Process.pid}, exception: #{$!.inspect}"
             end
-            cmd = <<-CMD
-              rake db:drop --trace 2>&1
-            CMD
-            trace "DB DROP FORK env: #{ENV['RAILS_ENV']} #{ENV['TEST_ENV_NUMBER']} -> " + `#{cmd}`
-            # also kill redis and memcached?
           end
         end
         
@@ -159,31 +173,36 @@ vm-enabled no
     end
     
     def run_dependent_process(pid_file_name, log_file_name, &command_block)
-      trace "run_dependent_process start #{@runner_num} pid: #{pid_file_name}, log: #{log_file_name}"
+      trace "run_dependent_process start runner: #{@runner_num} pid: #{pid_file_name}, log: #{log_file_name}"
       if File.exist?(pid_file_name)
+        trace "run_dependent_process found pid file runner: #{@runner_num} pid: #{pid_file_name}, log: #{log_file_name}"
         pid = File.read(pid_file_name).strip.to_i
+        trace "run_dependent_process found pid runner: #{@runner_num} pid: #{pid}, pid: #{pid_file_name}, log: #{log_file_name}"
         if pid > 0
-          trace "run_dependent_process before killing loop #{@runner_num} pid: #{pid}, pid: #{pid_file_name}, log: #{log_file_name}"
+          trace "run_dependent_process before killing loop runner: #{@runner_num} pid: #{pid}, pid: #{pid_file_name}, log: #{log_file_name}"
           ["TERM", "KILL"].each do |signal|
             tries = 20
             while(Process.kill(0, pid) rescue nil)
-              trace "run_dependent_process before kill #{@runner_num} pid: #{pid}, pid: #{pid_file_name}, log: #{log_file_name}"
+              trace "run_dependent_process before kill runner: #{@runner_num} pid: #{pid}, pid: #{pid_file_name}, log: #{log_file_name}"
               Process.kill(signal, pid)
               sleep 0.1
               tries -= 1
-              break if tries == 0
+              if tries == 0
+                raise "Could not kill previous process runner: #{@runner_num} pid: #{pid}, pid: #{pid_file_name}, log: #{log_file_name}" if signal == "KILL"
+                break
+              end
             end
           end
         end
       end
-      trace "run_dependent_process after killing old #{@runner_num} pid: #{pid_file_name}, log: #{log_file_name}, remaining processes:#{`pgrep -fl '(redis-server /zynga|memcached -vvv)'`}"
+      trace "run_dependent_process after killing old runner: #{@runner_num} pid: #{pid_file_name}, log: #{log_file_name}, remaining processes:#{`pgrep -fl '(redis-server /zynga|memcached -vvv)'`}"
       
-      trace "run_dependent_process before thread #{@runner_num} pid: #{pid_file_name}, log: #{log_file_name}"
+      trace "run_dependent_process before thread runner: #{@runner_num} pid: #{pid_file_name}, log: #{log_file_name}"
       Thread.new do
-        trace "run_dependent_process inside thread #{@runner_num} pid: #{pid_file_name}, log: #{log_file_name}"
+        trace "run_dependent_process inside thread runner: #{@runner_num} pid: #{pid_file_name}, log: #{log_file_name}"
         loop do
           cmd = yield
-#           cmd = "strace -fF -ttt -s 200 #{cmd}"
+          cmd = "strace -fF -ttt -s 200 #{cmd}"
           trace "run_dependent_process before fork runner #{@runner_num} cmd: #{cmd}"
           puts "running: #{cmd}"
           
@@ -203,11 +222,11 @@ vm-enabled no
             STDERR.reopen(file)
             exec cmd
           end
-          trace "run_dependent_process before exec wait #{@runner_num} child_pid: #{child_pid}, pid: #{pid_file_name}, log: #{log_file_name}"
+          trace "run_dependent_process before exec wait runner: #{@runner_num} child_pid: #{child_pid}, pid: #{pid_file_name}, log: #{log_file_name}"
           Process.wait child_pid
-          trace "run_dependent_process after exec wait #{@runner_num} child_pid: #{child_pid}, pid: #{pid_file_name}, log: #{log_file_name}"
+          trace "run_dependent_process after exec wait runner: #{@runner_num} child_pid: #{child_pid}, pid: #{pid_file_name}, log: #{log_file_name}"
           
-          trace "run_dependent_process before pid file wait read #{@runner_num} child_pid: #{child_pid}, pid: #{pid_file_name}, log: #{log_file_name}"
+          trace "run_dependent_process before pid file wait read runner: #{@runner_num} child_pid: #{child_pid}, pid: #{pid_file_name}, log: #{log_file_name}"
 #           sleep 0.1
           
           # Wait for a new pid file if the old one is in place
@@ -225,7 +244,7 @@ vm-enabled no
                   Process.kill("KILL", pid)
                 end
               end
-              trace "run_dependent_process before pid file wait actual wait #{@runner_num} child_pid: #{child_pid}, pid: #{pid_file_name}, log: #{log_file_name}"
+              trace "run_dependent_process before pid file wait actual wait runner: #{@runner_num} child_pid: #{child_pid}, pid: #{pid_file_name}, log: #{log_file_name}"
 #               begin
 #                 Process.wait pid
               # don't want to rescue ECHILD because that's complaining the pid isn't a child
@@ -392,7 +411,7 @@ vm-enabled no
       log_file = hydra_output.path
       old_env = ENV['RAILS_ENV']
       ENV.delete('RAILS_ENV')
-      cmd = "bundle exec cucumber -b #{@runner_opts} --require #{File.dirname(__FILE__)}/cucumber/formatter.rb --format Cucumber::Formatter::Hydra --out #{log_file} #{file} 2>&1"
+      cmd = "bundle exec cucumber -b #{@runner_opts} --require #{File.dirname(__FILE__)}/cucumber/formatter.rb --format Cucumber::Formatter::Hydra --out #{log_file} #{file} 2>&1 | tee -a /tmp/feature_runner_#{@runner_num}.log"
       trace "================================================================================================================================================================================================================================================================running: #{cmd}"
       stdout = `#{cmd}`
       status = $?

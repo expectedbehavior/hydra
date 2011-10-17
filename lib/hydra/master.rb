@@ -169,7 +169,7 @@ module Hydra #:nodoc:
 
       runners = worker.fetch('runners') { raise "You must specify the number of runners"  }
       command = worker.fetch('command') {
-        "RAILS_ENV=#{@environment} ruby -e \"require 'rubygems'; require 'bundler/setup'; require 'hydra'; Hydra::Worker.new(:io => Hydra::Stdio.new(:verbose => #{@verbose}), :runners => #{runners}, :verbose => #{@verbose}, :runner_opts => '#{@runner_opts}', :runner_listeners => \'#{@string_runner_event_listeners}\', :runner_log_file => \'#{@runner_log_file}\', :remote => '#{sync.connect}' );\" 2>&1 | tee log/hydra_worker.log"
+        "RAILS_ENV=#{@environment} ruby -e \"require 'rubygems'; require 'bundler/setup'; require 'hydra'; Hydra::Worker.new(:io => Hydra::Stdio.new(:verbose => #{@verbose}), :runners => #{runners}, :verbose => #{@verbose}, :runner_opts => '#{@runner_opts}', :runner_listeners => \'#{@string_runner_event_listeners}\', :runner_log_file => \'#{@runner_log_file}\', :remote => '#{sync.connect}' );\" 2>&1 | tee -a log/hydra_worker.log"
       }
 
       trace "Booting SSH worker"
@@ -208,7 +208,7 @@ module Hydra #:nodoc:
           while true
             begin
               message = worker[:io].gets
-              trace "got message: #{message}" if message
+              trace "got message: #{message.inspect}" if message
               # if it exists and its for me.
               # SSH gives us back echoes, so we need to ignore our own messages
               if message and !message.class.to_s.index("Worker").nil?

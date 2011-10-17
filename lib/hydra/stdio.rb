@@ -2,7 +2,7 @@ require 'hydra/messaging_io'
 module Hydra #:nodoc:
   # Read and write via stdout and stdin.
   class Stdio
-    traceable('PIPE')
+    traceable('STDIO')
     include Hydra::MessagingIO
 
     # Initialize new Stdio
