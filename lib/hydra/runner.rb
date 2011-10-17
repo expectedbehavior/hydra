@@ -143,6 +143,14 @@ vm-enabled no
         ENV['RAILS_ENV'] = old_env
         require 'tempfile'
         
+
+        user_service_log_file_name = "#{Dir.pwd}/log/user_service_log_file_name_#{@runner_num.to_s}.log"
+        run_dependent_process('', user_service_log_file_name) do
+          LOCK.synchronize do
+            ENV['USER_SERVICE_PORT'] = find_open_port.to_s
+          end
+          "script/server -p #{ENV['USER_SERVICE_PORT']}"
+        end
         
         
       rescue Exception => e
