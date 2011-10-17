@@ -152,6 +152,22 @@ vm-enabled no
           "script/server -p #{ENV['USER_SERVICE_PORT']}"
         end
         
+        loop do
+          trace "runner #{@runner_num.to_s} waiting for services to start..."
+          finished = false
+          ports = nil
+          LOCK.synchronize do
+            ports = [ENV['USER_SERVICE_PORT'], ENV['MEMCACHED_PORT'], ENV['REDIS_PORT']].map { |p| p.to_i }
+          end
+          if ports.all? { |p| is_port_in_use?(p) }
+            finished = true
+          end
+          if finished
+            trace "runner #{@runner_num.to_s} services should be done starting"
+            break
+          end
+          sleep 1
+        end
         
       rescue Exception => e
         trace "Error creating test DB: #{e}"
