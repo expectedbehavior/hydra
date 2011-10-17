@@ -2,6 +2,7 @@
 # require 'test/unit/testresult'
 # Test::Unit.run = true
 require 'thread'
+require 'system_timer'
 
 module Hydra #:nodoc:
   # Hydra class responsible for running test files.

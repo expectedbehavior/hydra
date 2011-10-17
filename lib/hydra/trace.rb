@@ -1,10 +1,12 @@
-require 'monitor'
+require 'thread'
+require 'system_timer'
+require 'syslog_logger'
 module Hydra #:nodoc:
   # Trace output when in verbose mode.
   module Trace
     REMOTE_IDENTIFIER = 'REMOTE'
     
-    TRACE_LOCK = Monitor.new
+    TRACE_LOGGER = SyslogLogger.new("hydra")
 
     module ClassMethods
       # Make a class traceable. Takes one parameter,
@@ -22,16 +24,24 @@ module Hydra #:nodoc:
       # Checks to ensure we're running verbosely.
       def trace(str)
         return unless @verbose
-        TRACE_LOCK.synchronize do
-          remote_info = @remote ? "#{REMOTE_IDENTIFIER} #{@remote} " : ''
-          str = str.gsub /\n/, "\n#{remote_info}"
-          more_info = ""
-          more_info << " test env number: #{ENV['TEST_ENV_NUMBER']}" if ENV['TEST_ENV_NUMBER']
-          more_info << " runner num: #{@runner_num}" if @runner_num
-          more_info << " thread: #{Thread.current.inspect}"
-          str = "#{Time.now.to_f} #{Time.now.to_s} #{remote_info}#{self.class._traceable_prefix}#{more_info}| #{str}"
-          $stdout.puts str
-          IO.popen("logger", "w") { |logger_io| logger_io.puts str }
+        SystemTimer.timeout_after(300) do
+          Hydra::WRITE_LOCK.synchronize do
+            remote_info = @remote ? "#{REMOTE_IDENTIFIER} #{@remote} " : ''
+            str = str.gsub /\n/, "\n#{remote_info}"
+            more_info = ""
+            more_info << " test env number: #{ENV['TEST_ENV_NUMBER']}" if ENV['TEST_ENV_NUMBER']
+            more_info << " runner num: #{@runner_num}" if @runner_num
+            more_info << " thread: #{Thread.current.inspect}"
+            str = "#{Time.now.to_f} #{Time.now.to_s} #{remote_info}#{self.class._traceable_prefix}#{more_info}| #{str}"
+            $stdout.puts str
+            TRACE_LOGGER.unknown str
+#             IO.popen("logger", "w") { |logger_io| logger_io.puts str }
+#             IO.popen("logger", "w+") do |logger_io|
+#               logger_io.puts str
+#               logger_io.close_write
+#               puts logger_io.read
+#             end
+          end
         end
       end
     end

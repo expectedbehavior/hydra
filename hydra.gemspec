@@ -106,6 +106,9 @@ Gem::Specification.new do |s|
      "test/worker_test.rb"
   ]
 
+  s.add_dependency(%q<SystemTimer>)
+  s.add_dependency(%q<SyslogLogger>, ["= 1.4.0"])
+
   if s.respond_to? :specification_version then
     current_version = Gem::Specification::CURRENT_SPECIFICATION_VERSION
     s.specification_version = 3

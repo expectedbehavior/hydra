@@ -14,8 +14,11 @@ require 'hydra/listener/report_generator'
 require 'hydra/listener/notifier'
 require 'hydra/listener/progress_bar'
 require 'hydra/runner_listener/abstract'
+require 'monitor'
 
 module Hydra
+  WRITE_LOCK = Monitor.new
+  
   def load_config(config_file)
     begin
       config_erb = ERB.new(IO.read(config_file)).result(binding)

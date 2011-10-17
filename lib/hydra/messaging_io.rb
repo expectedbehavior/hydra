@@ -34,7 +34,9 @@ module Hydra #:nodoc:
     def write(message)
       raise IOError unless @writer
       raise UnprocessableMessage unless message.is_a?(Hydra::Message)
-      @writer.write(message.serialize+"\n")
+      Hydra::WRITE_LOCK.synchronize do
+        @writer.write(message.serialize+"\n")
+      end
     rescue Errno::EPIPE
       raise IOError
     end
