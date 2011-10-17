@@ -16,7 +16,7 @@ module Hydra #:nodoc:
     include Hydra::Messages::Runner
     traceable('RUNNER')
 
-    DEFAULT_LOG_FILE = 'hydra-runner.log'
+    DEFAULT_LOG_FILE = File.join('log', 'hydra-runner.log')
     LOCK = Mutex.new
 
     # Boot up a runner. It takes an IO object (generally a pipe from its
