@@ -152,6 +152,7 @@ vm-enabled no
           "script/server -p #{ENV['USER_SERVICE_PORT']}"
         end
         
+        trace "runner #{@runner_num.to_s} about to enter waiting for services to start loop"
         loop do
           trace "runner #{@runner_num.to_s} waiting for services to start..."
           finished = false
@@ -226,7 +227,7 @@ vm-enabled no
         trace "run_dependent_process inside thread runner: #{@runner_num} pid: #{pid_file_name}, log: #{log_file_name}"
         loop do
           cmd = yield
-          cmd = "strace -fF -ttt -s 200 #{cmd}"
+          cmd = "strace -fF -ttt -s 200 #{cmd}" if @verbose
           trace "run_dependent_process before fork runner #{@runner_num} cmd: #{cmd}"
           puts "running: #{cmd}"
           
@@ -262,21 +263,17 @@ vm-enabled no
             pid = File.read(pid_file_name).strip.to_i
             if pid > 0
               if (Process.kill(0, pid) rescue nil)
-                at_exit do
-                  Process.kill("TERM", pid)
-                  sleep 0.1
-                  Process.kill("KILL", pid)
-                end
+#                 at_exit do
+#                   Process.kill("TERM", pid)
+#                   sleep 0.1
+#                   Process.kill("KILL", pid)
+#                 end
               end
               trace "run_dependent_process before pid file wait actual wait runner: #{@runner_num} child_pid: #{child_pid}, pid: #{pid_file_name}, log: #{log_file_name}"
-#               begin
-#                 Process.wait pid
-              # don't want to rescue ECHILD because that's complaining the pid isn't a child
-#               rescue Errno::ECHILD
-#               end
               
               while (Process.kill(0, pid) rescue nil)
-                sleep 0.5
+                trace "run_dependent_process before pid file wait loop wait runner: #{@runner_num} child_pid: #{child_pid}, pid: #{pid_file_name}, log: #{log_file_name}"
+                sleep 1
               end
               
             end
@@ -300,19 +297,23 @@ vm-enabled no
     
     require 'socket'
     def is_port_in_use?(port, ip = "localhost")
+      trace "runner #{@runner_num.to_s} is port in use: #{port}"
       begin
         SystemTimer.timeout_after(1) do
           begin
             s = TCPSocket.new(ip, port)
             s.close
+            trace "runner #{@runner_num.to_s} port is used: #{port}"
             return true
           rescue Errno::ECONNREFUSED, Errno::EHOSTUNREACH
+            trace "runner #{@runner_num.to_s} port is free: #{port}"
             return false
           end
         end
       rescue Timeout::Error
       end
      
+      trace "runner #{@runner_num.to_s} port is used: #{port}"
       return true
     end
 
