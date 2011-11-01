@@ -80,9 +80,14 @@ module Hydra #:nodoc:
       @running = false
       trace "Notifying #{@runners.size} Runners of Shutdown"
       @runners.each do |r|
-        trace "Sending Shutdown to Runner"
+        trace "Sending Shutdown to Runner #{r[:runner_num]}"
         trace "\t#{r.inspect}"
-        r[:io].write(Shutdown.new)
+        begin
+          r[:io].write(Shutdown.new)
+        rescue Exception => e
+          trace "Error shutting down runner #{r[:runner_num]}"
+          raise
+        end
       end
       Thread.exit
     end
@@ -92,7 +97,9 @@ module Hydra #:nodoc:
     def boot_runners(num_runners) #:nodoc:
       trace "Booting #{num_runners} Runners"
       num_runners.times do |runner_num|
+        trace "Before runner pipe #{runner_num}"
         pipe = Hydra::Pipe.new(:verbose => @verbose)
+        trace "After runner pipe #{runner_num}"
         child = SafeFork.fork do
           pipe.identify_as_child
           Hydra::Runner.new(:io => pipe, :verbose => @verbose, :runner_opts => @runner_opts, :runner_listeners => @runner_event_listeners, :runner_log_file => @runner_log_file, :remote => @remote, :runner_num => runner_num)
@@ -106,7 +113,7 @@ module Hydra #:nodoc:
 #           exit!
         end
         pipe.identify_as_parent
-        @runners << { :pid => child, :io => pipe, :idle => false }
+        @runners << { :pid => child, :io => pipe, :idle => false, :runner_num => runner_num }
       end
       trace "#{@runners.size} Runners booted"
     end
@@ -130,6 +137,7 @@ module Hydra #:nodoc:
       @listeners << Thread.new do
         while @running
           begin
+            trace "About to get message from master"
             message = @io.gets
             if message and !message.class.to_s.index("Master").nil?
               trace "Received Message from Master"
@@ -152,9 +160,10 @@ module Hydra #:nodoc:
         @listeners << Thread.new do
           while @running
             begin
+              trace "About to get message from runner #{r[:runner_num]}"
               message = r[:io].gets
               if message and !message.class.to_s.index("Runner").nil?
-                trace "Received Message from Runner"
+                trace "Received Message from Runner #{r[:runner_num]}"
                 trace "\t#{message.inspect}"
                 message.handle(self, r)
               end
@@ -163,6 +172,7 @@ module Hydra #:nodoc:
               Thread.exit
             end
           end
+          trace "Done listening to runner #{r[:runner_num]}"
         end
       end
     end
