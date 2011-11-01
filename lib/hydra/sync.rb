@@ -60,7 +60,7 @@ module Hydra #:nodoc:
       ].join(" ")
       rsync_command = "(#{rsync_command}) 2>&1" # capture all output
       trace rsync_command
-      trace `#{rsync_command}`
+      trace "rsync output #{@connect}:" + `#{rsync_command}`
     end
 
     def self.sync_many opts

@@ -32,7 +32,7 @@ module Hydra #:nodoc:
             more_info << " test env number: #{ENV['TEST_ENV_NUMBER']}" if ENV['TEST_ENV_NUMBER']
             more_info << " runner num: #{@runner_num}" if @runner_num
             more_info << " thread: #{Thread.current.inspect}"
-            str = "#{Time.now.to_f} #{Time.now.to_s} #{remote_info}#{self.class._traceable_prefix}#{more_info}| #{str}"
+            str = "#{Time.now.to_f} #{Time.now.to_s} pid: #{Process.pid} #{remote_info}#{self.class._traceable_prefix}#{more_info}| #{str}"
             $stdout.puts str
             TRACE_LOGGER.unknown str
 #             IO.popen("logger", "w") { |logger_io| logger_io.puts str }
