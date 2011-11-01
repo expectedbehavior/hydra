@@ -175,7 +175,7 @@ vm-enabled no
         end
         
       rescue Exception => e
-        trace "Error creating test DB: #{e}"
+        trace "Error creating test DB: #{e}\n#{e.backtrace}"
         raise
       end
       
@@ -364,7 +364,7 @@ vm-enabled no
         output = `rake db:drop TEST_ENV_NUMBER=#{ENV['TEST_ENV_NUMBER']} RAILS_ENV=test`
         trace "DB:DROP -> #{output}"
       rescue Exception => e
-        trace "Could not drop test database #{ENV['TEST_ENV_NUMBER']}: #{e}"
+        trace "Could not drop test database #{ENV['TEST_ENV_NUMBER']}: #{e}\n#{e.backtrace}"
       end
       
       runner_end if @runner_began
