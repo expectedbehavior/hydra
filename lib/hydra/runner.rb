@@ -246,6 +246,7 @@ vm-enabled no
 #           end
           
           child_pid = fork do
+            @io.close
             file = File.open(log_file_name + "-out", "w")
             STDOUT.reopen(file)
             STDERR.reopen(file)
