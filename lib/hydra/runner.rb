@@ -144,13 +144,13 @@ vm-enabled no
         require 'tempfile'
         
 
-        user_service_log_file_name = "#{Dir.pwd}/log/user_service_log_file_name_#{@runner_num.to_s}.log"
-        run_dependent_process('', user_service_log_file_name) do
-          LOCK.synchronize do
-            ENV['USER_SERVICE_PORT'] = find_open_port.to_s
-          end
-          "script/server -p #{ENV['USER_SERVICE_PORT']}"
-        end
+#         user_service_log_file_name = "#{Dir.pwd}/log/user_service_log_file_name_#{@runner_num.to_s}.log"
+#         run_dependent_process('', user_service_log_file_name) do
+#           LOCK.synchronize do
+#             ENV['USER_SERVICE_PORT'] = find_open_port.to_s
+#           end
+#           "script/server -p #{ENV['USER_SERVICE_PORT']}"
+#         end
         
         trace "runner #{@runner_num.to_s} about to enter waiting for services to start loop"
         loop do
@@ -158,7 +158,11 @@ vm-enabled no
           finished = false
           ports = nil
           LOCK.synchronize do
-            ports = [ENV['USER_SERVICE_PORT'], ENV['MEMCACHED_PORT'], ENV['REDIS_PORT']].map { |p| p.to_i }
+            ports = [
+#                      ENV['USER_SERVICE_PORT'],
+                     ENV['MEMCACHED_PORT'],
+                     ENV['REDIS_PORT']
+                    ].map { |p| p.to_i }
           end
           if ports.all? { |p| is_port_in_use?(p) }
             finished = true
