@@ -370,6 +370,9 @@ vm-enabled no
       
       runner_end if @runner_began
       @runner_began = @running = false
+      trace "About to close my io"
+      @io.close
+      trace "io closed"
     end
 
     def runner_end
