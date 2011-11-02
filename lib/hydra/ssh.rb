@@ -48,7 +48,7 @@ module Hydra #:nodoc:
       @writer.write "exit\n"
 #       @writer.flush
 #       puts @reader.read
-      @reader.read
+#       @reader.read
       super
     end
   end

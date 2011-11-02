@@ -43,36 +43,6 @@ module Hydra #:nodoc:
 #         Rake::Task['db:create:all'].invoke        
 #         trace ``
         
-        trace "DB DROP FORK before fork env: #{ENV['RAILS_ENV']} #{ENV['TEST_ENV_NUMBER']} parent pid: #{parent_pid}, my pid: #{Process.pid}"
-        # this should really clean up after the runner dies
-        fork do
-          fork do
-            begin
-              # don't redirect yet, because we're tee'ing the worker
-  #             STDIN.reopen '/dev/null'
-  #             STDOUT.reopen '/dev/null', 'a'
-  #             STDERR.reopen STDOUT
-              while (Process.kill(0, parent_pid) rescue nil)
-                trace "DB DROP FORK loop env: #{ENV['RAILS_ENV']} #{ENV['TEST_ENV_NUMBER']} parent pid: #{parent_pid}, my pid: #{Process.pid}"
-                sleep 1
-              end
-              cmd = <<-CMD
-                rake db:drop --trace 2>&1
-              CMD
-              trace "DB DROP FORK after loop env: #{ENV['RAILS_ENV']} #{ENV['TEST_ENV_NUMBER']} parent pid: #{parent_pid}, my pid: #{Process.pid}"
-              trace "DB DROP FORK run env: #{ENV['RAILS_ENV']} #{ENV['TEST_ENV_NUMBER']} parent pid: #{parent_pid}, my pid: #{Process.pid} -> " + `#{cmd}`
-              # also kill redis and memcached?
-            rescue Exception => e
-              puts "DB DROP FORK exception env: #{ENV['RAILS_ENV']} #{ENV['TEST_ENV_NUMBER']} parent pid: #{parent_pid}, my pid: #{Process.pid}, exception: #{e.inspect}"
-              trace "DB DROP FORK exception env: #{ENV['RAILS_ENV']} #{ENV['TEST_ENV_NUMBER']} parent pid: #{parent_pid}, my pid: #{Process.pid}, exception: #{e.inspect}"
-            ensure
-              puts "DB DROP FORK ensure env: #{ENV['RAILS_ENV']} #{ENV['TEST_ENV_NUMBER']} parent pid: #{parent_pid}, my pid: #{Process.pid}, exception: #{$!.inspect}"
-              trace "DB DROP FORK ensure env: #{ENV['RAILS_ENV']} #{ENV['TEST_ENV_NUMBER']} parent pid: #{parent_pid}, my pid: #{Process.pid}, exception: #{$!.inspect}"
-            end
-          end
-        end
-        
-        
         
         
         srand # since we've forked we need to reseed
@@ -121,9 +91,57 @@ vm-enabled no
           
           "redis-server #{redis_config_file.path}"
         end
+
+        
         
         
         sleep 10
+        
+        
+        wait_for_processes_to_start
+        
+        
+        
+        trace "DB DROP FORK before fork env: #{ENV['RAILS_ENV']} #{ENV['TEST_ENV_NUMBER']} parent pid: #{parent_pid}, my pid: #{Process.pid}"
+        # this should really clean up after the runner dies
+        forkpid = fork do
+          Hydra.const_set(:WRITE_LOCK, Monitor.new)
+          trace "DB DROP FORK before setsid env: #{ENV['RAILS_ENV']} #{ENV['TEST_ENV_NUMBER']} parent pid: #{parent_pid}, my pid: #{Process.pid}"
+          Process.setsid
+          trace "DB DROP FORK after setsid env: #{ENV['RAILS_ENV']} #{ENV['TEST_ENV_NUMBER']} parent pid: #{parent_pid}, my pid: #{Process.pid}"
+          otherpid = fork do
+            begin
+              Signal.trap("HUP")  {}
+              # don't redirect yet, because we're tee'ing the worker
+#               STDIN.close
+              STDIN.reopen '/dev/null'
+  #             STDOUT.reopen '/dev/null', 'a'
+  #             STDERR.reopen STDOUT
+              while (Process.kill(0, parent_pid) rescue nil)
+                trace "DB DROP FORK loop env: #{ENV['RAILS_ENV']} #{ENV['TEST_ENV_NUMBER']} parent pid: #{parent_pid}, my pid: #{Process.pid}"
+                sleep 1
+              end
+              cmd = <<-CMD
+                rake db:drop --trace 2>&1
+              CMD
+              trace "DB DROP FORK after loop env: #{ENV['RAILS_ENV']} #{ENV['TEST_ENV_NUMBER']} parent pid: #{parent_pid}, my pid: #{Process.pid}"
+              trace "DB DROP FORK run env: #{ENV['RAILS_ENV']} #{ENV['TEST_ENV_NUMBER']} parent pid: #{parent_pid}, my pid: #{Process.pid} -> " + `#{cmd}`
+              # also kill redis and memcached?
+            rescue Exception => e
+              puts "DB DROP FORK exception env: #{ENV['RAILS_ENV']} #{ENV['TEST_ENV_NUMBER']} parent pid: #{parent_pid}, my pid: #{Process.pid}, exception: #{e.inspect}, backtrace: #{e.backtrace}"
+              trace "DB DROP FORK exception env: #{ENV['RAILS_ENV']} #{ENV['TEST_ENV_NUMBER']} parent pid: #{parent_pid}, my pid: #{Process.pid}, exception: #{e.inspect}, backtrace: #{e.backtrace}"
+            ensure
+              puts "DB DROP FORK ensure env: #{ENV['RAILS_ENV']} #{ENV['TEST_ENV_NUMBER']} parent pid: #{parent_pid}, my pid: #{Process.pid}, exception: #{$!.inspect}, backtrace: #{$! && $!.backtrace}"
+              trace "DB DROP FORK ensure env: #{ENV['RAILS_ENV']} #{ENV['TEST_ENV_NUMBER']} parent pid: #{parent_pid}, my pid: #{Process.pid}, exception: #{$!.inspect}, backtrace: #{$! && $!.backtrace}"
+            end
+          end
+          Process.detach otherpid
+        end
+        Process.detach forkpid
+        
+        
+        
+        
 
         cmd = <<-CMD
           rake db:drop --trace 2>&1
@@ -152,27 +170,7 @@ vm-enabled no
 #           "script/server -p #{ENV['USER_SERVICE_PORT']}"
 #         end
         
-        trace "runner #{@runner_num.to_s} about to enter waiting for services to start loop"
-        loop do
-          trace "runner #{@runner_num.to_s} waiting for services to start..."
-          finished = false
-          ports = nil
-          LOCK.synchronize do
-            ports = [
-#                      ENV['USER_SERVICE_PORT'],
-                     ENV['MEMCACHED_PORT'],
-                     ENV['REDIS_PORT']
-                    ].map { |p| p.to_i }
-          end
-          if ports.all? { |p| is_port_in_use?(p) }
-            finished = true
-          end
-          if finished
-            trace "runner #{@runner_num.to_s} services should be done starting"
-            break
-          end
-          sleep 1
-        end
+        wait_for_processes_to_start
         
       rescue Exception => e
         trace "Error creating test DB: #{e}\n#{e.backtrace}"
@@ -201,8 +199,33 @@ vm-enabled no
       end
     end
     
+    def wait_for_processes_to_start
+      trace "runner #{@runner_num.to_s} about to enter waiting for services to start loop"
+      loop do
+        trace "runner #{@runner_num.to_s} waiting for services to start..."
+        finished = false
+        ports = nil
+        LOCK.synchronize do
+          ports = [
+#                    ENV['USER_SERVICE_PORT'],
+                   ENV['MEMCACHED_PORT'],
+                   ENV['REDIS_PORT']
+                  ].map { |p| p.to_i }
+        end
+        if ports.all? { |p| is_port_in_use?(p) }
+          finished = true
+        end
+        if finished
+          trace "runner #{@runner_num.to_s} services should be done starting"
+          break
+        end
+        sleep 1
+      end
+    end
+    
     def run_dependent_process(pid_file_name, log_file_name, &command_block)
       trace "run_dependent_process start runner: #{@runner_num} pid: #{pid_file_name}, log: #{log_file_name}"
+      pid = nil
       if File.exist?(pid_file_name)
         trace "run_dependent_process found pid file runner: #{@runner_num} pid: #{pid_file_name}, log: #{log_file_name}"
         pid = File.read(pid_file_name).strip.to_i
@@ -224,14 +247,14 @@ vm-enabled no
           end
         end
       end
-      trace "run_dependent_process after killing old runner: #{@runner_num} pid: #{pid_file_name}, log: #{log_file_name}, remaining processes:#{`pgrep -fl '(redis-server /zynga|memcached -vvv)'`}"
+      trace "run_dependent_process after killing old runner: #{@runner_num} pid: #{pid} pid: #{pid_file_name}, log: #{log_file_name}, remaining processes pid:#{`pgrep -fl '(redis-server /zynga|memcached -vvv)' | grep #{pid}`},  remaining processes full:#{`pgrep -fl '(redis-server /zynga|memcached -vvv)'`}"
       
       trace "run_dependent_process before thread runner: #{@runner_num} pid: #{pid_file_name}, log: #{log_file_name}"
       Thread.new do
         trace "run_dependent_process inside thread runner: #{@runner_num} pid: #{pid_file_name}, log: #{log_file_name}"
         loop do
           cmd = yield
-          cmd = "strace -fF -ttt -s 200 #{cmd}" if @verbose
+#           cmd = "strace -fF -ttt -s 200 #{cmd}" if @verbose
           trace "run_dependent_process before fork runner #{@runner_num} cmd: #{cmd}"
           puts "running: #{cmd}"
           

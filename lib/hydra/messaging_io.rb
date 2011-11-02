@@ -1,3 +1,4 @@
+require 'system_timer'
 module Hydra #:nodoc:
   # Module that implemets methods that auto-serialize and deserialize messaging
   # objects.
@@ -15,11 +16,22 @@ module Hydra #:nodoc:
       while true
         begin
           raise IOError unless @reader
-          message = @reader.gets
+#           trace "About to gets reader"
+#           message = nil
+#           begin
+#             SystemTimer.timeout_after(300) do
+              message = @reader.gets
+#             end
+#           rescue Timeout::Error => e
+#             trace "reader timeout: #{@reader.inspect} #{@reader.fileno} #{@reader.closed?.inspect}"
+#           end
+#           trace "Just gets'ed reader #{message.inspect}"
+#           trace message if message.include?(Hydra::Trace::REMOTE_IDENTIFIER)
 #           puts "#{Process.pid} GOT MESSAGE #{@verbose.inspect}: #{message}"
           return nil unless message
           trace message if message.include?(Hydra::Trace::REMOTE_IDENTIFIER)
-          return nil if message !~ /^\s*(\{|\.)/ # must start with { or .
+#           return nil if message !~ /^\s*(\{|\.)/ # must start with { or .
+          next if message !~ /^\s*(\{|\.)/ # must start with { or .
           return Message.build(eval(message.chomp))
         rescue SyntaxError, NameError
           # uncomment to help catch remote errors by seeing all traffic
@@ -43,8 +55,12 @@ module Hydra #:nodoc:
 
     # Closes the IO object.
     def close
+#       trace "About to close reader and writer: #{@reader.inspect} #{@reader.fileno}, #{@writer.inspect} #{@writer.fileno}"
       @reader.close if @reader
       @writer.close if @writer
+#       [@parent_read, @child_write, @child_read, @parent_write].each do |io|
+#         io.close if io && !io.closed?
+#       end
     end
 
     # IO will return this error if it cannot process a message.

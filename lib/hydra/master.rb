@@ -189,7 +189,10 @@ module Hydra #:nodoc:
           end
           worker[:listener].exit if worker[:listener]
         end
-      end.each { |thread| thread.join }
+      end # .each { |thread| thread.join }
+      trace "Shutdown sent to all workers"
+#       @listeners.each{|t| t.exit}
+#       exit! 0
     end
 
     def process_messages
@@ -207,6 +210,7 @@ module Hydra #:nodoc:
            end
           while true
             begin
+              trace "About to gets from: #{worker.inspect}"
               message = worker[:io].gets
               trace "got message: #{message.inspect}" if message
               # if it exists and its for me.
