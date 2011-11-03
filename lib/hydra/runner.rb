@@ -40,13 +40,9 @@ module Hydra #:nodoc:
       parent_pid = Process.pid
       ENV['TEST_ENV_NUMBER'] = parent_pid.to_s
       begin
-#         Rake::Task['db:drop'].invoke        
-#         Rake::Task['db:create:all'].invoke        
-#         trace ``
         
         
-        
-        srand # since we've forked we need to reseed
+        srand # since we've forked the runner we need to reseed
         
         memcached_pid_file_name = "#{Dir.pwd}/log/runner_#{@runner_num}_memcached.pid"
         memcached_log_file_name = "#{Dir.pwd}/log/memcached_#{@runner_num.to_s}.log"
@@ -57,7 +53,6 @@ module Hydra #:nodoc:
           "memcached -vvvd -P #{memcached_pid_file_name} -p #{ENV['MEMCACHED_PORT']}"
         end
         
-
 
         redis_pid_file_name = "#{Dir.pwd}/log/runner_#{@runner_num}_redis.pid"
         redis_log_file_name = "#{Dir.pwd}/log/redis_#{@runner_num.to_s}.log"
@@ -94,32 +89,21 @@ vm-enabled no
         end
 
         
-        
-        
-#         sleep 10
-        
-        
         wait_for_processes_to_start
-        
         
         
         trace "DB DROP FORK before fork env: #{ENV['RAILS_ENV']} #{ENV['TEST_ENV_NUMBER']} parent pid: #{parent_pid}, my pid: #{Process.pid}"
         # this should really clean up after the runner dies
-        forkpid = fork do
+        fork do
           Hydra.const_set(:WRITE_LOCK, Monitor.new)
           trace "DB DROP FORK before setsid env: #{ENV['RAILS_ENV']} #{ENV['TEST_ENV_NUMBER']} parent pid: #{parent_pid}, my pid: #{Process.pid}"
           Process.setsid
           trace "DB DROP FORK after setsid env: #{ENV['RAILS_ENV']} #{ENV['TEST_ENV_NUMBER']} parent pid: #{parent_pid}, my pid: #{Process.pid}"
           trap 'SIGHUP', 'IGNORE'
-          otherpid = fork do
+          fork do
             begin
-#               Signal.trap("HUP")  {}
-              # don't redirect yet, because we're tee'ing the worker
-#               STDIN.close
               STDIN.reopen '/dev/null'
               redirect_output( opts.fetch( :runner_log_file ) { DEFAULT_LOG_FILE } )
-  #             STDOUT.reopen '/dev/null', 'a'
-  #             STDERR.reopen STDOUT
               
               memcached_pid = pid_from_file(memcached_pid_file_name, memcached_log_file_name)
               redis_pid = pid_from_file(redis_pid_file_name, redis_log_file_name)
@@ -150,12 +134,7 @@ vm-enabled no
               trace "DB DROP FORK ensure env: #{ENV['RAILS_ENV']} #{ENV['TEST_ENV_NUMBER']} parent pid: #{parent_pid}, my pid: #{Process.pid}, exception: #{$!.inspect}, backtrace: #{$! && $!.backtrace}"
             end
           end
-#           Process.detach otherpid
         end
-#         Process.detach forkpid
-        
-        
-        
         
 
         cmd = <<-CMD
@@ -168,7 +147,6 @@ vm-enabled no
         
         old_env = ENV['RAILS_ENV']
         ENV['RAILS_ENV'] = "development"
-#         cmd = "rake db:test:clone_structure --trace"
         cmd = <<-CMD
           rake db:test:load_structure --trace 2>&1
         CMD
@@ -176,39 +154,21 @@ vm-enabled no
         ENV['RAILS_ENV'] = old_env
         
 
-#         user_service_log_file_name = "#{Dir.pwd}/log/user_service_log_file_name_#{@runner_num.to_s}.log"
-#         run_dependent_process('', user_service_log_file_name) do
-#           LOCK.synchronize do
-#             ENV['USER_SERVICE_PORT'] = find_open_port.to_s
-#           end
-#           "script/server -p #{ENV['USER_SERVICE_PORT']}"
-#         end
-        
-#         wait_for_processes_to_start
-        
       rescue Exception => e
         trace "Error creating test DB: #{e}\n#{e.backtrace}"
         raise
       end
-      
-      # let's see if this fixes memcache server marked dead errors
-#       sleep 10
-      trace "memcache stats port #{ENV['MEMCACHED_PORT']}: " + `echo stats | nc localhost #{ENV['MEMCACHED_PORT']}`
 
       trace 'Booted. Sending Request for file'
-
-      
-      
       
       runner_begin
-
 
       trace 'Booted. Sending Request for file'
       @io.write RequestFile.new
       begin
         process_messages
       rescue => ex
-        trace ex.to_s
+        trace "Caught exception while processing messages: #{ex.inspect}\n#{ex.backtrace}"
         raise ex
       end
     end
@@ -221,7 +181,6 @@ vm-enabled no
         ports = nil
         LOCK.synchronize do
           ports = [
-#                    ENV['USER_SERVICE_PORT'],
                    ENV['MEMCACHED_PORT'],
                    ENV['REDIS_PORT']
                   ].map { |p| p.to_i }
@@ -283,17 +242,6 @@ vm-enabled no
 #           cmd = "strace -fF -ttt -s 200 #{cmd}" if @verbose
           trace "run_dependent_process before fork runner #{@runner_num} cmd: #{cmd}"
           puts "running: #{cmd}"
-          
-          # maybe the fork below is causing the redis issues?
-          # synchronize
-#           LOCK.synchronize do
-#           # reopen outputs
-#             file = File.open(log_file_name, "w")
-#             STDOUT.reopen(file)
-#             STDERR.reopen(file)
-# #           system cmd
-#           end
-          
           child_pid = fork do
             @io.close
             file = File.open(log_file_name + "-out", "w")
@@ -306,7 +254,6 @@ vm-enabled no
           trace "run_dependent_process after exec wait runner: #{@runner_num} child_pid: #{child_pid}, pid: #{pid_file_name}, log: #{log_file_name}"
           
           trace "run_dependent_process before pid file wait read runner: #{@runner_num} child_pid: #{child_pid}, pid: #{pid_file_name}, log: #{log_file_name}"
-#           sleep 0.1
           
           # Wait for a new pid file if the old one is in place
           10.times do
@@ -316,13 +263,6 @@ vm-enabled no
           if File.exist?(pid_file_name)
             pid = File.read(pid_file_name).strip.to_i
             if pid > 0
-              if (Process.kill(0, pid) rescue nil)
-#                 at_exit do
-#                   Process.kill("TERM", pid)
-#                   sleep 0.1
-#                   Process.kill("KILL", pid)
-#                 end
-              end
               trace "run_dependent_process before pid file wait actual wait runner: #{@runner_num} child_pid: #{child_pid}, pid: #{pid_file_name}, log: #{log_file_name}"
               
               while (Process.kill(0, pid) rescue nil)
