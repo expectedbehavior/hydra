@@ -23,11 +23,11 @@ module Hydra #:nodoc:
     # Boot up a runner. It takes an IO object (generally a pipe from its
     # parent) to send it messages on which files to execute.
     def initialize(opts = {})
+      @verbose = opts.fetch(:verbose) { false }
       redirect_output( opts.fetch( :runner_log_file ) { DEFAULT_LOG_FILE } )
       reg_trap_sighup
 
       @io = opts.fetch(:io) { raise "No IO Object" }
-      @verbose = opts.fetch(:verbose) { false }
       @remote = opts.fetch(:remote) { false }      
       @event_listeners = Array( opts.fetch( :runner_listeners ) { nil } )
       @runner_num = opts[:runner_num]
@@ -558,17 +558,17 @@ vm-enabled no
     end
 
     def redirect_output file_name
+      file = nil
+      file_flags = @verbose ? "a" : "w"
       begin
-        file = File.open(file_name, 'a')
-        $stdout.reopen(file)
-        $stderr.reopen(file)
+        file = File.open(file_name, file_flags)
       rescue
         # it should always redirect output in order to handle unexpected interruption
         # successfully
-        file = File.open(DEFAULT_LOG_FILE, 'a')
-        $stdout.reopen(file)
-        $stderr.reopen(file)
+        file = File.open(DEFAULT_LOG_FILE, file_flags)
       end
+      $stdout.reopen(file)
+      $stderr.reopen(file)
       $stdout.sync = true
       $stderr.sync = true
     end
