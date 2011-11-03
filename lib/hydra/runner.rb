@@ -96,7 +96,7 @@ vm-enabled no
         
         
         
-        sleep 10
+#         sleep 10
         
         
         wait_for_processes_to_start
@@ -178,7 +178,7 @@ vm-enabled no
 #           "script/server -p #{ENV['USER_SERVICE_PORT']}"
 #         end
         
-        wait_for_processes_to_start
+#         wait_for_processes_to_start
         
       rescue Exception => e
         trace "Error creating test DB: #{e}\n#{e.backtrace}"
@@ -186,7 +186,7 @@ vm-enabled no
       end
       
       # let's see if this fixes memcache server marked dead errors
-      sleep 10
+#       sleep 10
       trace "memcache stats port #{ENV['MEMCACHED_PORT']}: " + `echo stats | nc localhost #{ENV['MEMCACHED_PORT']}`
 
       trace 'Booted. Sending Request for file'
