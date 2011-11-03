@@ -127,6 +127,12 @@ vm-enabled no
               trace "DB DROP FORK after loop env: #{ENV['RAILS_ENV']} #{ENV['TEST_ENV_NUMBER']} parent pid: #{parent_pid}, my pid: #{Process.pid}"
               trace "DB DROP FORK run env: #{ENV['RAILS_ENV']} #{ENV['TEST_ENV_NUMBER']} parent pid: #{parent_pid}, my pid: #{Process.pid} -> " + `#{cmd}`
               # also kill redis and memcached?
+              
+              trace "DB DROP FORK before kill memcached env: #{ENV['RAILS_ENV']} #{ENV['TEST_ENV_NUMBER']} parent pid: #{parent_pid}, my pid: #{Process.pid}"
+              kill_external_process(memcached_pid_file_name, memcached_log_file_name)
+              trace "DB DROP FORK before kill redis env: #{ENV['RAILS_ENV']} #{ENV['TEST_ENV_NUMBER']} parent pid: #{parent_pid}, my pid: #{Process.pid}"
+              kill_external_process(redis_pid_file_name, redis_log_file_name)
+              trace "DB DROP FORK after killing env: #{ENV['RAILS_ENV']} #{ENV['TEST_ENV_NUMBER']} parent pid: #{parent_pid}, my pid: #{Process.pid}"
             rescue Exception => e
               puts "DB DROP FORK exception env: #{ENV['RAILS_ENV']} #{ENV['TEST_ENV_NUMBER']} parent pid: #{parent_pid}, my pid: #{Process.pid}, exception: #{e.inspect}, backtrace: #{e.backtrace}"
               trace "DB DROP FORK exception env: #{ENV['RAILS_ENV']} #{ENV['TEST_ENV_NUMBER']} parent pid: #{parent_pid}, my pid: #{Process.pid}, exception: #{e.inspect}, backtrace: #{e.backtrace}"
@@ -223,8 +229,7 @@ vm-enabled no
       end
     end
     
-    def run_dependent_process(pid_file_name, log_file_name, &command_block)
-      trace "run_dependent_process start runner: #{@runner_num} pid: #{pid_file_name}, log: #{log_file_name}"
+    def kill_external_process(pid_file_name, log_file_name)
       pid = nil
       if File.exist?(pid_file_name)
         trace "run_dependent_process found pid file runner: #{@runner_num} pid: #{pid_file_name}, log: #{log_file_name}"
@@ -248,6 +253,11 @@ vm-enabled no
         end
       end
       trace "run_dependent_process after killing old runner: #{@runner_num} pid: #{pid} pid: #{pid_file_name}, log: #{log_file_name}, remaining processes pid:#{`pgrep -fl '(redis-server /zynga|memcached -vvv)' | grep #{pid}`},  remaining processes full:#{`pgrep -fl '(redis-server /zynga|memcached -vvv)'`}"
+    end
+    
+    def run_dependent_process(pid_file_name, log_file_name, &command_block)
+      trace "run_dependent_process start runner: #{@runner_num} pid: #{pid_file_name}, log: #{log_file_name}"
+      kill_external_process(pid_file_name, log_file_name)
       
       trace "run_dependent_process before thread runner: #{@runner_num} pid: #{pid_file_name}, log: #{log_file_name}"
       Thread.new do
