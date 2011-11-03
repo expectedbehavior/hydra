@@ -3,6 +3,7 @@
 # Test::Unit.run = true
 require 'thread'
 require 'system_timer'
+require 'tempfile'
 
 module Hydra #:nodoc:
   # Hydra class responsible for running test files.
@@ -109,12 +110,14 @@ vm-enabled no
           trace "DB DROP FORK before setsid env: #{ENV['RAILS_ENV']} #{ENV['TEST_ENV_NUMBER']} parent pid: #{parent_pid}, my pid: #{Process.pid}"
           Process.setsid
           trace "DB DROP FORK after setsid env: #{ENV['RAILS_ENV']} #{ENV['TEST_ENV_NUMBER']} parent pid: #{parent_pid}, my pid: #{Process.pid}"
+          trap 'SIGHUP', 'IGNORE'
           otherpid = fork do
             begin
-              Signal.trap("HUP")  {}
+#               Signal.trap("HUP")  {}
               # don't redirect yet, because we're tee'ing the worker
 #               STDIN.close
               STDIN.reopen '/dev/null'
+              redirect_output( opts.fetch( :runner_log_file ) { DEFAULT_LOG_FILE } )
   #             STDOUT.reopen '/dev/null', 'a'
   #             STDERR.reopen STDOUT
               while (Process.kill(0, parent_pid) rescue nil)
@@ -141,9 +144,9 @@ vm-enabled no
               trace "DB DROP FORK ensure env: #{ENV['RAILS_ENV']} #{ENV['TEST_ENV_NUMBER']} parent pid: #{parent_pid}, my pid: #{Process.pid}, exception: #{$!.inspect}, backtrace: #{$! && $!.backtrace}"
             end
           end
-          Process.detach otherpid
+#           Process.detach otherpid
         end
-        Process.detach forkpid
+#         Process.detach forkpid
         
         
         
@@ -165,7 +168,6 @@ vm-enabled no
         CMD
         trace "DB LOAD STRUCTURE env: #{ENV['RAILS_ENV']} #{ENV['TEST_ENV_NUMBER']} -> " + `#{cmd}`
         ENV['RAILS_ENV'] = old_env
-        require 'tempfile'
         
 
 #         user_service_log_file_name = "#{Dir.pwd}/log/user_service_log_file_name_#{@runner_num.to_s}.log"
