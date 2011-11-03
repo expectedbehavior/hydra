@@ -239,7 +239,7 @@ vm-enabled no
         trace "run_dependent_process inside thread runner: #{@runner_num} pid: #{pid_file_name}, log: #{log_file_name}"
         loop do
           cmd = yield
-#           cmd = "strace -fF -ttt -s 200 #{cmd}" if @verbose
+          cmd = "strace -fF -ttt -s 200 #{cmd}" if @verbose
           trace "run_dependent_process before fork runner #{@runner_num} cmd: #{cmd}"
           puts "running: #{cmd}"
           child_pid = fork do
