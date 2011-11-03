@@ -435,7 +435,9 @@ vm-enabled no
       log_file = hydra_output.path
       old_env = ENV['RAILS_ENV']
       ENV.delete('RAILS_ENV')
-      cmd = "bundle exec spec -b #{@runner_opts} --require hydra/spec/hydra_formatter --format Spec::Runner::Formatter::HydraFormatter:#{log_file} #{file} 2>&1 | tee -a /tmp/spec_runner_#{@runner_num}.log"
+      tee_flags = @verbose ? "-a" : ""
+      log_file_name = "#{Dir.pwd}/log/spec_runner_#{@runner_num.to_s}.log"
+      cmd = "bundle exec spec -b #{@runner_opts} --require hydra/spec/hydra_formatter --format Spec::Runner::Formatter::HydraFormatter:#{log_file} #{file} 2>&1 | tee #{tee_flags} #{log_file_name}"
       trace "================================================================================================================================================================================================================================================================running: #{cmd}"
       stdout = `#{cmd}`
       status = $?
@@ -463,7 +465,9 @@ vm-enabled no
       log_file = hydra_output.path
       old_env = ENV['RAILS_ENV']
       ENV.delete('RAILS_ENV')
-      cmd = "bundle exec cucumber -b #{@runner_opts} --require #{File.dirname(__FILE__)}/cucumber/formatter.rb --format Cucumber::Formatter::Hydra --out #{log_file} #{file} 2>&1 | tee -a /tmp/feature_runner_#{@runner_num}.log"
+      tee_flags = @verbose ? "-a" : ""
+      log_file_name = "#{Dir.pwd}/log/feature_runner_#{@runner_num.to_s}.log"
+      cmd = "bundle exec cucumber -b #{@runner_opts} --require #{File.dirname(__FILE__)}/cucumber/formatter.rb --format Cucumber::Formatter::Hydra --out #{log_file} #{file} 2>&1 | tee #{tee_flags} #{log_file_name}"
       trace "================================================================================================================================================================================================================================================================running: #{cmd}"
       stdout = `#{cmd}`
       status = $?
