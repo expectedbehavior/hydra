@@ -120,6 +120,10 @@ vm-enabled no
               redirect_output( opts.fetch( :runner_log_file ) { DEFAULT_LOG_FILE } )
   #             STDOUT.reopen '/dev/null', 'a'
   #             STDERR.reopen STDOUT
+              
+              memcached_pid = pid_from_file(memcached_pid_file_name, memcached_log_file_name)
+              redis_pid = pid_from_file(redis_pid_file_name, redis_log_file_name)
+
               while (Process.kill(0, parent_pid) rescue nil)
                 trace "DB DROP FORK loop env: #{ENV['RAILS_ENV']} #{ENV['TEST_ENV_NUMBER']} parent pid: #{parent_pid}, my pid: #{Process.pid}"
                 sleep 1
@@ -132,9 +136,11 @@ vm-enabled no
               # also kill redis and memcached?
               
               trace "DB DROP FORK before kill memcached env: #{ENV['RAILS_ENV']} #{ENV['TEST_ENV_NUMBER']} parent pid: #{parent_pid}, my pid: #{Process.pid}"
-              kill_external_process(memcached_pid_file_name, memcached_log_file_name)
+              kill_external_process_pid(memcached_pid, memcached_pid_file_name, memcached_log_file_name)
+#               kill_external_process(memcached_pid_file_name, memcached_log_file_name)
               trace "DB DROP FORK before kill redis env: #{ENV['RAILS_ENV']} #{ENV['TEST_ENV_NUMBER']} parent pid: #{parent_pid}, my pid: #{Process.pid}"
-              kill_external_process(redis_pid_file_name, redis_log_file_name)
+              kill_external_process_pid(redis_pid, redis_pid_file_name, redis_log_file_name)
+#               kill_external_process(redis_pid_file_name, redis_log_file_name)
               trace "DB DROP FORK after killing env: #{ENV['RAILS_ENV']} #{ENV['TEST_ENV_NUMBER']} parent pid: #{parent_pid}, my pid: #{Process.pid}"
             rescue Exception => e
               puts "DB DROP FORK exception env: #{ENV['RAILS_ENV']} #{ENV['TEST_ENV_NUMBER']} parent pid: #{parent_pid}, my pid: #{Process.pid}, exception: #{e.inspect}, backtrace: #{e.backtrace}"
@@ -230,36 +236,44 @@ vm-enabled no
         sleep 1
       end
     end
-    
-    def kill_external_process(pid_file_name, log_file_name)
-      pid = nil
-      if File.exist?(pid_file_name)
-        trace "run_dependent_process found pid file runner: #{@runner_num} pid: #{pid_file_name}, log: #{log_file_name}"
-        pid = File.read(pid_file_name).strip.to_i
-        trace "run_dependent_process found pid runner: #{@runner_num} pid: #{pid}, pid: #{pid_file_name}, log: #{log_file_name}"
-        if pid > 0
-          trace "run_dependent_process before killing loop runner: #{@runner_num} pid: #{pid}, pid: #{pid_file_name}, log: #{log_file_name}"
-          ["TERM", "KILL"].each do |signal|
-            tries = 20
-            while(Process.kill(0, pid) rescue nil)
-              trace "run_dependent_process before kill runner: #{@runner_num} pid: #{pid}, pid: #{pid_file_name}, log: #{log_file_name}"
-              Process.kill(signal, pid)
-              sleep 0.1
-              tries -= 1
-              if tries == 0
-                raise "Could not kill previous process runner: #{@runner_num} pid: #{pid}, pid: #{pid_file_name}, log: #{log_file_name}" if signal == "KILL"
-                break
-              end
+
+    def kill_external_process_pid(pid, pid_file_name, log_file_name)
+      trace "run_dependent_process found pid runner: #{@runner_num} pid: #{pid}, pid: #{pid_file_name}, log: #{log_file_name}"
+      if pid > 0
+        trace "run_dependent_process before killing loop runner: #{@runner_num} pid: #{pid}, pid: #{pid_file_name}, log: #{log_file_name}"
+        ["TERM", "KILL"].each do |signal|
+          tries = 20
+          while(Process.kill(0, pid) rescue nil)
+            trace "run_dependent_process before kill runner: #{@runner_num} pid: #{pid}, pid: #{pid_file_name}, log: #{log_file_name}"
+            Process.kill(signal, pid)
+            sleep 0.1
+            tries -= 1
+            if tries == 0
+              raise "Could not kill previous process runner: #{@runner_num} pid: #{pid}, pid: #{pid_file_name}, log: #{log_file_name}" if signal == "KILL"
+              break
             end
           end
         end
+      end
+    end
+    
+    def pid_from_file(pid_file_name, log_file_name)
+      if File.exist?(pid_file_name)
+        trace "run_dependent_process found pid file runner: #{@runner_num} pid: #{pid_file_name}, log: #{log_file_name}"
+        File.read(pid_file_name).strip.to_i
+      end
+    end
+    
+    def kill_external_process_pid_file(pid_file_name, log_file_name)
+      if pid = pid_from_file(pid_file_name, log_file_name)
+        kill_external_process_pid(pid, pid_file_name, log_file_name)
       end
       trace "run_dependent_process after killing old runner: #{@runner_num} pid: #{pid} pid: #{pid_file_name}, log: #{log_file_name}, remaining processes pid:#{`pgrep -fl '(redis-server /zynga|memcached -vvv)' | grep #{pid}`},  remaining processes full:#{`pgrep -fl '(redis-server /zynga|memcached -vvv)'`}"
     end
     
     def run_dependent_process(pid_file_name, log_file_name, &command_block)
       trace "run_dependent_process start runner: #{@runner_num} pid: #{pid_file_name}, log: #{log_file_name}"
-      kill_external_process(pid_file_name, log_file_name)
+      kill_external_process_pid_file(pid_file_name, log_file_name)
       
       trace "run_dependent_process before thread runner: #{@runner_num} pid: #{pid_file_name}, log: #{log_file_name}"
       Thread.new do
