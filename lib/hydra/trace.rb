@@ -35,12 +35,6 @@ module Hydra #:nodoc:
             str = "#{Time.now.to_f} #{Time.now.to_s} pid: #{Process.pid} #{remote_info}#{self.class._traceable_prefix}#{more_info}| #{str}"
             $stdout.puts str
             TRACE_LOGGER.unknown str
-#             IO.popen("logger", "w") { |logger_io| logger_io.puts str }
-#             IO.popen("logger", "w+") do |logger_io|
-#               logger_io.puts str
-#               logger_io.close_write
-#               puts logger_io.read
-#             end
           end
         end
       end

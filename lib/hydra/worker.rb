@@ -77,7 +77,6 @@ module Hydra #:nodoc:
     # When a master issues a shutdown order, it hits this method, which causes
     # the worker to send shutdown messages to its runners.
     def shutdown
-#       return unless @running
       @running = false
       trace "Notifying #{@runners.size} Runners of Shutdown"
       @runners.each do |r|
@@ -103,19 +102,12 @@ module Hydra #:nodoc:
         pipe = Hydra::Pipe.new(:verbose => @verbose)
         trace "After runner pipe #{runner_num}"
         child = SafeFork.fork do
-#           @io.close
           pipe.identify_as_child
           Hydra::Runner.new(:io => pipe, :verbose => @verbose, :runner_opts => @runner_opts, :runner_listeners => @runner_event_listeners, :runner_log_file => @runner_log_file, :remote => @remote, :runner_num => runner_num)
           trace "After runner, before runner exit"
           trace Thread.list.inspect
           at_exit { trace "at_exit #{ENV['TEST_ENV_NUMBER']} #{Process.pid}" }
-# #           set_trace_func proc { |event, file, line, id, binding, classname|
-# #             trace("%8s %s:%-2d %10s %8s\n" % [event, file, line, id, classname])
-# #           }
-#           Process.kill("KILL", 0) # this seems to kill the DB DROP FORK process
-#           Process.kill("TERM", 0)
           exit
-# #           exit!
         end
         pipe.identify_as_parent
         @runners << { :pid => child, :io => pipe, :idle => false, :runner_num => runner_num }
@@ -168,7 +160,6 @@ module Hydra #:nodoc:
               trace "About to get message from runner #{r[:runner_num]}"
               message = r[:io].gets
               trace "Just got message from runner #{r[:runner_num]}: #{message.inspect}"
-#               raise IOError if message.nil?
               if message and !message.class.to_s.index("Runner").nil?
                 trace "Received Message from Runner #{r[:runner_num]}"
                 trace "\t#{message.inspect}"

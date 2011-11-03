@@ -189,10 +189,8 @@ module Hydra #:nodoc:
           end
           worker[:listener].exit if worker[:listener]
         end
-      end # .each { |thread| thread.join }
+      end
       trace "Shutdown sent to all workers"
-#       @listeners.each{|t| t.exit}
-#       exit! 0
     end
 
     def process_messages
