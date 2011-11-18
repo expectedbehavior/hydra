@@ -109,24 +109,28 @@ vm-enabled no
               
               memcached_pid = pid_from_file(memcached_pid_file_name, memcached_log_file_name)
               redis_pid = pid_from_file(redis_pid_file_name, redis_log_file_name)
+              start = Time.now
+              six_hours = 60 * 60 * 6 # if this fork somehow sticks around 6 hours, shut 'er down
 
-              while (Process.kill(0, parent_pid) rescue nil)
-                trace "DB DROP FORK loop env: #{ENV['RAILS_ENV']} #{ENV['TEST_ENV_NUMBER']} parent pid: #{parent_pid}, my pid: #{Process.pid}"
-                sleep 1
+              i = 0
+              interval = 0.1
+              while (Process.kill(0, parent_pid) rescue nil) and Time.now < start + six_hours
+                if (i += 1) % (60 / interval) == 0
+                  trace "DB DROP FORK loop env: #{ENV['RAILS_ENV']} #{ENV['TEST_ENV_NUMBER']} parent pid: #{parent_pid}, my pid: #{Process.pid}"
+                end
+                sleep interval
               end
+              # sometimes the db drop dies because redis is already dead, should we just use mysql?
               cmd = <<-CMD
                 rake db:drop --trace 2>&1
               CMD
               trace "DB DROP FORK after loop env: #{ENV['RAILS_ENV']} #{ENV['TEST_ENV_NUMBER']} parent pid: #{parent_pid}, my pid: #{Process.pid}"
               trace "DB DROP FORK run env: #{ENV['RAILS_ENV']} #{ENV['TEST_ENV_NUMBER']} parent pid: #{parent_pid}, my pid: #{Process.pid} -> " + `#{cmd}`
-              # also kill redis and memcached?
               
               trace "DB DROP FORK before kill memcached env: #{ENV['RAILS_ENV']} #{ENV['TEST_ENV_NUMBER']} parent pid: #{parent_pid}, my pid: #{Process.pid}"
               kill_external_process_pid(memcached_pid, memcached_pid_file_name, memcached_log_file_name)
-#               kill_external_process(memcached_pid_file_name, memcached_log_file_name)
               trace "DB DROP FORK before kill redis env: #{ENV['RAILS_ENV']} #{ENV['TEST_ENV_NUMBER']} parent pid: #{parent_pid}, my pid: #{Process.pid}"
               kill_external_process_pid(redis_pid, redis_pid_file_name, redis_log_file_name)
-#               kill_external_process(redis_pid_file_name, redis_log_file_name)
               trace "DB DROP FORK after killing env: #{ENV['RAILS_ENV']} #{ENV['TEST_ENV_NUMBER']} parent pid: #{parent_pid}, my pid: #{Process.pid}"
             rescue Exception => e
               puts "DB DROP FORK exception env: #{ENV['RAILS_ENV']} #{ENV['TEST_ENV_NUMBER']} parent pid: #{parent_pid}, my pid: #{Process.pid}, exception: #{e.inspect}, backtrace: #{e.backtrace}"
