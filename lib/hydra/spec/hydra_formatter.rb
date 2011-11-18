@@ -5,6 +5,8 @@ module Spec
     module Formatter
       class HydraFormatter < ProgressBarFormatter
         def example_passed(*args)
+          @output.print '.'
+          @output.flush
         end
 
         def example_pending(*args)
@@ -15,6 +17,8 @@ module Spec
 
         # Stifle the post-test summary
         def dump_summary(*args)
+          @output.print 'TEST_COMPLETED'
+          @output.flush
         end
 
         # Stifle pending specs
