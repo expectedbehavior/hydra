@@ -211,6 +211,7 @@ module Hydra #:nodoc:
             begin
               trace "About to gets from: #{worker.inspect}"
               message = worker[:io].gets
+              raise IOError if message.nil? # the connection was closed
               trace "got message: #{message.inspect}" if message
               # if it exists and its for me.
               # SSH gives us back echoes, so we need to ignore our own messages

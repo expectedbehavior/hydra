@@ -159,6 +159,7 @@ module Hydra #:nodoc:
             begin
               trace "About to get message from runner #{r[:runner_num]}"
               message = r[:io].gets
+              raise IOError if message.nil? # the connection was closed
               trace "Just got message from runner #{r[:runner_num]}: #{message.inspect}"
               if message and !message.class.to_s.index("Runner").nil?
                 trace "Received Message from Runner #{r[:runner_num]}"
