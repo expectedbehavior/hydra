@@ -238,7 +238,6 @@ vm-enabled no
     
     def run_dependent_process(pid_file_name, log_file_name, &command_block)
       trace "run_dependent_process start runner: #{@runner_num} pid: #{pid_file_name}, log: #{log_file_name}"
-      kill_external_process_pid_file(pid_file_name, log_file_name)
       
       trace "run_dependent_process before thread runner: #{@runner_num} pid: #{pid_file_name}, log: #{log_file_name}"
       Thread.new do
@@ -362,12 +361,12 @@ vm-enabled no
     def stop
       trace "Dropping test database #{ENV['TEST_ENV_NUMBER']}"
       ENV['TEST_ENV_NUMBER'] = Process.pid.to_s
-      begin
-        output = `rake db:drop TEST_ENV_NUMBER=#{ENV['TEST_ENV_NUMBER']} RAILS_ENV=test`
-        trace "DB:DROP -> #{output}"
-      rescue Exception => e
-        trace "Could not drop test database #{ENV['TEST_ENV_NUMBER']}: #{e}\n#{e.backtrace}"
-      end
+#       begin
+#         output = `rake db:drop --trace TEST_ENV_NUMBER=#{ENV['TEST_ENV_NUMBER']} RAILS_ENV=test 2>&1`
+#         trace "DB:DROP -> #{output}"
+#       rescue Exception => e
+#         trace "Could not drop test database #{ENV['TEST_ENV_NUMBER']}: #{e}\n#{e.backtrace}"
+#       end
       
       runner_end if @runner_began
       @runner_began = @running = false
