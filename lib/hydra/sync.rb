@@ -60,7 +60,13 @@ module Hydra #:nodoc:
       ].join(" ")
       rsync_command = "(#{rsync_command}) 2>&1" # capture all output
       trace rsync_command
-      trace "rsync output #{@connect}:" + `#{rsync_command}`
+      output = `#{rsync_command}`
+      status = $?
+      if status.success?
+        trace "rsync output #{@connect}:" + output
+      else
+        raise "rsync failed with output: #{output}"
+      end
     end
 
     def self.sync_many opts
@@ -95,6 +101,7 @@ module Hydra #:nodoc:
             Sync.new(worker_opts, @sync, @verbose).sync
           rescue 
             trace "Syncing failed [#{worker_opts.inspect}]\n#{$!.message}\n#{$!.backtrace}"
+            raise
           end
         end
       end
