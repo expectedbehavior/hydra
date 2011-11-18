@@ -14,7 +14,7 @@ module Hydra #:nodoc:
       # Increment completed files count and update bar
       def file_end(file, output)
         unless output == '.'
-          @output.write "\r#{' '*60}\r#{output}\n"
+          write "\r#{' '*60}\r#{output}\n"
           @errors = true
         end
         @files_completed += 1
@@ -24,7 +24,7 @@ module Hydra #:nodoc:
       # Break the line
       def testing_end
         render_progress_bar
-        @output.write "\n"
+        write "\n"
       end
 
       private
@@ -32,15 +32,23 @@ module Hydra #:nodoc:
       def render_progress_bar
         width = 30
         complete = ((@files_completed.to_f / @total_files.to_f) * width).to_i
-        @output.write "\r" # move to beginning
-        @output.write 'Hydra Testing ['
-        @output.write @errors ? "\033[0;31m" : "\033[0;32m"
-        complete.times{@output.write '#'}
-        @output.write '>'
-        (width-complete).times{@output.write ' '}
-        @output.write "\033[0m"
-        @output.write "] #{@files_completed}/#{@total_files}"
-        @output.flush
+        write "\r" # move to beginning
+        write 'Hydra Testing ['
+        write @errors ? "\033[0;31m" : "\033[0;32m"
+        complete.times{write '#'}
+        write '>'
+        (width-complete).times{write ' '}
+        write "\033[0m"
+        write "] #{@files_completed}/#{@total_files}"
+        Hydra::WRITE_LOCK.synchronize do
+          @output.flush
+        end
+      end
+      
+      def write(str)
+        Hydra::WRITE_LOCK.synchronize do
+          @output.write str
+        end
       end
     end
   end
