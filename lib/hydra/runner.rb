@@ -24,13 +24,15 @@ module Hydra #:nodoc:
     # parent) to send it messages on which files to execute.
     def initialize(opts = {})
       @verbose = opts.fetch(:verbose) { false }
-      redirect_output( opts.fetch( :runner_log_file ) { DEFAULT_LOG_FILE } )
+      @runner_num = opts[:runner_num]
+      @runner_log_file = opts[:runner_log_file]
+      @runner_log_file = DEFAULT_LOG_FILE + @runner_num.to_s if ["", nil].include? @runner_log_file
+      redirect_output( @runner_log_file )
       reg_trap_sighup
 
       @io = opts.fetch(:io) { raise "No IO Object" }
       @remote = opts.fetch(:remote) { false }      
       @event_listeners = Array( opts.fetch( :runner_listeners ) { nil } )
-      @runner_num = opts[:runner_num]
 
       $stdout.sync = true
 
@@ -103,7 +105,7 @@ vm-enabled no
           fork do
             begin
               STDIN.reopen '/dev/null'
-              redirect_output( opts.fetch( :runner_log_file ) { DEFAULT_LOG_FILE } )
+              redirect_output( @runner_log_file + 'cleanup' )
               
               memcached_pid = pid_from_file(memcached_pid_file_name, memcached_log_file_name)
               redis_pid = pid_from_file(redis_pid_file_name, redis_log_file_name)
