@@ -254,6 +254,7 @@ vm-enabled no
             STDERR.reopen(file)
             exec cmd
           end
+          Process.detach child_pid
           trace "run_dependent_process before exec wait runner: #{@runner_num} child_pid: #{child_pid}, pid: #{pid_file_name}, log: #{log_file_name}"
           Process.wait child_pid
           trace "run_dependent_process after exec wait runner: #{@runner_num} child_pid: #{child_pid}, pid: #{pid_file_name}, log: #{log_file_name}"
