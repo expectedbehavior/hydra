@@ -228,6 +228,7 @@ module Hydra #:nodoc:
 
       @listeners.each{|l| l.join}
       @event_listeners.each{|l| l.testing_end}
+      trace "Finished processing messages (thread list: #{Thread.list.inspect})"
     end
 
     def sort_files_from_report

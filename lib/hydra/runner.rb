@@ -257,16 +257,22 @@ vm-enabled no
           
           # Wait for a new pid file if the old one is in place
           10.times do
-            break if File.exist?(pid_file_name) && File.mtime(pid_file_name) > (Time.now - 5)
+            if File.exist?(pid_file_name) && File.mtime(pid_file_name) > (Time.now - 5)
+              trace "run_dependent_process found pid file runner: #{@runner_num} child_pid: #{child_pid}, pid: #{pid_file_name}, log: #{log_file_name}"
+              break
+            end
+            trace "run_dependent_process waiting to read loop pid file runner: #{@runner_num} child_pid: #{child_pid}, pid: #{pid_file_name}, log: #{log_file_name}"
             sleep 0.2
           end
           if File.exist?(pid_file_name)
+            trace "run_dependent_process found pid file again runner: #{@runner_num} child_pid: #{child_pid}, pid: #{pid_file_name}, log: #{log_file_name}"
             pid = File.read(pid_file_name).strip.to_i
+            trace "run_dependent_process found pid from file runner: #{@runner_num} pid: #{pid}, child_pid: #{child_pid}, pid: #{pid_file_name}, log: #{log_file_name}"
             if pid > 0
-              trace "run_dependent_process before pid file wait actual wait runner: #{@runner_num} child_pid: #{child_pid}, pid: #{pid_file_name}, log: #{log_file_name}"
+              trace "run_dependent_process before pid file wait actual wait runner: #{@runner_num} pid: #{pid}, child_pid: #{child_pid}, pid: #{pid_file_name}, log: #{log_file_name}"
               
               while (Process.kill(0, pid) rescue nil)
-                trace "run_dependent_process before pid file wait loop wait runner: #{@runner_num} child_pid: #{child_pid}, pid: #{pid_file_name}, log: #{log_file_name}"
+                trace "run_dependent_process before pid file wait loop wait runner: #{@runner_num} pid: #{pid}, child_pid: #{child_pid}, pid: #{pid_file_name}, log: #{log_file_name}"
                 sleep 1
               end
               
@@ -575,6 +581,7 @@ vm-enabled no
       $stderr.reopen(file)
       $stdout.sync = true
       $stderr.sync = true
+      trace "redirected output to: #{file.path}"
     end
   end
 end
