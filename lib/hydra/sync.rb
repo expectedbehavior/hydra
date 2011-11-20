@@ -95,10 +95,11 @@ module Hydra #:nodoc:
       trace "Processing workers"
       @listeners = []
       @remote_worker_opts.each do |worker_opts|
+        sync_opts = @sync.dup
         @listeners << Thread.new do
           begin
             trace "Syncing #{worker_opts.inspect}"
-            Sync.new(worker_opts, @sync, @verbose).sync
+            Sync.new(worker_opts, sync_opts, @verbose).sync
           rescue 
             trace "Syncing failed [#{worker_opts.inspect}]\n#{$!.message}\n#{$!.backtrace}"
             raise
