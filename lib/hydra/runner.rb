@@ -38,6 +38,8 @@ module Hydra #:nodoc:
 
       @runner_opts = opts.fetch(:runner_opts) { "" }
 
+      ENV['HYDRA_VERBOSE'] = "true" if @verbose
+
       trace 'Creating test database'
       parent_pid = Process.pid
       ENV['TEST_ENV_NUMBER'] = parent_pid.to_s
