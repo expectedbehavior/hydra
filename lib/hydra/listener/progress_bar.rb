@@ -32,15 +32,17 @@ module Hydra #:nodoc:
       def render_progress_bar
         width = 30
         complete = ((@files_completed.to_f / @total_files.to_f) * width).to_i
-        write "\r" # move to beginning
-        write 'Hydra Testing ['
-        write @errors ? "\033[0;31m" : "\033[0;32m"
-        complete.times{write '#'}
-        write '>'
-        (width-complete).times{write ' '}
-        write "\033[0m"
-        write "] #{@files_completed}/#{@total_files}"
+        str = ""
+        str << "\r" # move to beginning
+        str << 'Hydra Testing ['
+        str << (@errors ? "\033[0;31m" : "\033[0;32m")
+        complete.times { str << '#' }
+        str << '>'
+        (width-complete).times { str << ' ' }
+        str << "\033[0m"
+        str << "] #{@files_completed}/#{@total_files}"
         Hydra::WRITE_LOCK.synchronize do
+          write str
           @output.flush
         end
       end
