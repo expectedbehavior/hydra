@@ -14,7 +14,7 @@ module Hydra #:nodoc:
     include Hydra::Messages::Master
     include Open3
     traceable('MASTER')
-    attr_reader :failed_files
+    attr_reader :failed_files, :file_count
 
     # Create a new Master
     #
@@ -38,6 +38,7 @@ module Hydra #:nodoc:
       config_file = opts.delete('config') { nil }
       opts.merge!(Hydra.load_config(config_file)) if config_file
       @files = Array(opts.fetch('files') { nil })
+      @file_count = @files.size
       raise "No files, nothing to do" if @files.empty?
       @incomplete_files = @files.dup
       @failed_files = []

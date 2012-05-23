@@ -136,7 +136,9 @@ module Hydra #:nodoc:
         $stdout.puts "\nFinished in #{'%.6f' % (Time.now - start)} seconds." if @show_time
 
         unless master.failed_files.empty?
-          raise "Hydra: Not all tests passes"
+          num_passed = master.file_count - master.failed_files.size
+          percent = master.file_count == 0 ? 0 : ((num_passed.to_f / master.file_count) * 100).to_i
+          raise "Hydra: Not all tests passed, #{num_passed}/#{master.file_count} passed (#{percent}%)"
         end
       end
     end
