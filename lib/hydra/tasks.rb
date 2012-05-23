@@ -118,7 +118,7 @@ module Hydra #:nodoc:
     private
     # Create the rake task defined by this HydraTestTask
     def define
-      desc "Hydra Tests" + (@name == :hydra ? "" : " for #{@name}")
+      desc "Hydra Tests" + (@name == :hydra ? "" : " for #{@name.inspect}")
       task @name do
         if Object.const_defined?('Rails') && Rails.env == 'development'
           $stderr.puts %{WARNING: Rails Environment is "development". Make sure to set it properly (ex: "RAILS_ENV=test rake hydra")}
