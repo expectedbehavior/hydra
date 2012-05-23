@@ -102,10 +102,10 @@ module Hydra #:nodoc:
         trace "After runner pipe #{runner_num}"
         child = SafeFork.fork do
           pipe.identify_as_child
+          at_exit { trace "at_exit #{ENV['TEST_ENV_NUMBER']} #{Process.pid}" }
           Hydra::Runner.new(:io => pipe, :verbose => @verbose, :runner_opts => @runner_opts, :runner_listeners => @runner_event_listeners, :runner_log_file => @runner_log_file, :remote => @remote, :runner_num => runner_num)
           trace "After runner, before runner exit"
           trace Thread.list.inspect
-          at_exit { trace "at_exit #{ENV['TEST_ENV_NUMBER']} #{Process.pid}" }
           exit
         end
         pipe.identify_as_parent
