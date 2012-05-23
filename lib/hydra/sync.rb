@@ -32,6 +32,7 @@ module Hydra #:nodoc:
       sync_opts.stringify_keys!
       @local_dir = sync_opts.fetch('directory') { raise "You must specify a synchronization directory" }
       @exclude_paths = sync_opts.fetch('exclude') { [] }
+      @rsync_opts = sync_opts.fetch('rsync_opts') { "" }
 
       trace "Initialized"
       trace "  Worker: (#{worker_opts.inspect})"
@@ -56,6 +57,7 @@ module Hydra #:nodoc:
         exclude_opts,
         File.expand_path(@local_dir)+'/',
         "-e \"ssh #{@ssh_opts}\"",
+        @rsync_opts,
         "#{@connect}:#{@remote_dir}"
       ].join(" ")
       rsync_command = "(#{rsync_command}) 2>&1" # capture all output
