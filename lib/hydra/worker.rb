@@ -86,11 +86,10 @@ module Hydra #:nodoc:
           r[:io].write(Shutdown.new)
           r[:io].close
         rescue Exception => e
-          trace "Error shutting down runner #{r[:runner_num]}"
-          raise
+          trace "Error shutting down runner #{r[:runner_num]} #{e.message}\n#{e.backtrace}"
         end
       end
-      Thread.exit
+      exit
     end
 
     private
