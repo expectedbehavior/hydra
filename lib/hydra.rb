@@ -16,6 +16,10 @@ require 'hydra/listener/progress_bar'
 require 'hydra/runner_listener/abstract'
 require 'monitor'
 
+require 'hydra/test_processor'
+require 'hydra/test_processor/spec'
+require 'hydra/test_processor/cucumber'
+
 module Hydra
   WRITE_LOCK = Monitor.new
   

@@ -444,58 +444,19 @@ vm-enabled no
 
     # run all the Specs in an RSpec file (NOT IMPLEMENTED)
     def run_rspec_file(file)
-      tee_flags = @verbose ? "-a" : ""
-      log_file_name = "#{Dir.pwd}/log/spec_runner_#{@runner_num.to_s}.log"
-      return run_test_command do |log_file|
-        "bundle exec spec -b #{@runner_opts} --require hydra/spec/hydra_formatter --format Spec::Runner::Formatter::HydraFormatter:#{log_file} #{file} 2>&1 | tee #{tee_flags} #{log_file_name}"
-      end
+      trace "about to process spec file: #{file}"
+      Hydra::TestProcessor::Spec.new(file,
+                                     :verbose => @verbose,
+                                     :runner_num => @runner_num,
+                                     :runner_opts => @runner_opts).process!
     end
 
     # run all the scenarios in a cucumber feature file
     def run_cucumber_file(file)
-      files = [file]
-      tee_flags = @verbose ? "-a" : ""
-      log_file_name = "#{Dir.pwd}/log/feature_runner_#{@runner_num.to_s}.log"
-      return run_test_command do |log_file|
-        "bundle exec cucumber -b #{@runner_opts} --require #{File.dirname(__FILE__)}/cucumber/formatter.rb --format Cucumber::Formatter::Hydra --out #{log_file} #{file} 2>&1 | tee #{tee_flags} #{log_file_name}"
-      end
-    end
-    
-    def run_test_command(&block)
-      hydra_output = Tempfile.new("hydra")
-      log_file = hydra_output.path
-      old_env = ENV['RAILS_ENV']
-      ENV.delete('RAILS_ENV')
-      
-      cmd = yield log_file
-      
-      trace "================================================================================================================================================================================================================================================================running: #{cmd}"
-      stdout = `#{cmd}`
-      status = $?
-      trace stdout
-      ENV['RAILS_ENV'] = old_env
-      
-      
-      hydra_output.rewind
-      output = hydra_output.read.chomp
-      hydra_output.close
-      hydra_output.unlink
-      
-      output = process_output(cmd, status, output, stdout)
-
-      return output
-    end
-    
-    def process_output(cmd, status, output, stdout)
-      if output !~ /TEST_COMPLETED/
-        "FAILURE: command (#{cmd}) failed to complete, but produced: #{output}\nwith stdout: #{stdout}"
-      elsif not status.success?
-        "FAILURE: command (#{cmd}) exited with #{status.inspect} and produced: #{output}\nwith stdout: #{stdout}"
-      elsif output.gsub("\n","").gsub('TEST_COMPLETED', '') =~ /^\.*$/
-        ""
-      else
-        output
-      end
+      Hydra::TestProcessor::Cucumber.new(file,
+                                     :verbose => @verbose,
+                                     :runner_num => @runner_num,
+                                     :runner_opts => @runner_opts).process!
     end
 
     def run_javascript_file(file)
