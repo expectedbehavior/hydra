@@ -238,7 +238,7 @@ module Hydra #:nodoc:
         report = YAML.load_file(heuristic_file)
         return unless report
         sorted_files = report.sort{ |a,b|
-          b[1]['duration'] <=> a[1]['duration']
+          (b[1]['duration'] || 0) <=> (a[1]['duration'] || 0)
         }.collect{|tuple| tuple[0]}
 
         sorted_files.each do |f|
