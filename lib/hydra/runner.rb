@@ -352,7 +352,7 @@ vm-enabled no
       trace "Running file: #{file}"
 
       output = ""
-      if file =~ /_spec.rb$/i || file =~ /spec -e/i
+      if file =~ /_spec.rb$/i || file =~ /spec\/? -e/i
         output = run_rspec_file(file)
       elsif file =~ /.feature$/i
         output = run_cucumber_file(file)
