@@ -1,11 +1,11 @@
 require 'cucumber/formatter/progress'
 
-module Cucumber #:nodoc:
-  module Formatter #:nodoc:
+module Hydra #:nodoc:
+  module Cucumber #:nodoc:
     # Hydra formatter for cucumber.
     # Stifles all output except error messages
-    # Based on the 
-    class Hydra < Cucumber::Formatter::Progress
+    # Based on the
+    class Formatter < ::Cucumber::Formatter::Progress
       # Removed the extra newlines here
       def after_features(features)
         print_summary(features)
