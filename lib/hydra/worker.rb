@@ -151,6 +151,14 @@ module Hydra #:nodoc:
       end
     end
 
+    def runners_remaining?
+      @runners.any? do |r|
+        res = ! r[:error]
+        trace "no runners remaining? runner: #{r.inspect}: #{res.inspect}"
+        res
+      end
+    end
+
     def process_messages_from_runners
       @runners.each do |r|
         @listeners << Thread.new do
@@ -165,8 +173,11 @@ module Hydra #:nodoc:
                 trace "\t#{message.inspect}"
                 message.handle(self, r)
               end
-            rescue IOError => ex
+            rescue Object => ex
               trace "Worker lost Runner [#{r.inspect}]"
+              r[:error] = ex
+              shutdown unless runners_remaining?
+              raise unless ex.kind_of? IOError
               Thread.exit
             end
           end
