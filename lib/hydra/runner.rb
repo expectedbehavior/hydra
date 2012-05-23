@@ -106,6 +106,14 @@ vm-enabled no
           trap 'SIGHUP', 'IGNORE'
           fork do
             begin
+              3.upto(1023) do |fd|
+                begin
+                  if io = IO::new(fd)
+                    io.close
+                  end
+                rescue
+                end
+              end
               STDIN.reopen '/dev/null'
               redirect_output( @runner_log_file + 'cleanup' )
               
