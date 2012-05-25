@@ -81,7 +81,6 @@ timeout 0
 # dir #{File.dirname(redis_pid_file_name)}
 appendonly no
 appendfsync no
-glueoutputbuf yes
 vm-enabled no
           CONFIG
           trace "runner #{@runner_num.to_s} redis config: #{config_contents}"
