@@ -81,7 +81,6 @@ timeout 0
 # dir #{File.dirname(redis_pid_file_name)}
 appendonly no
 appendfsync no
-vm-enabled no
           CONFIG
           trace "runner #{@runner_num.to_s} redis config: #{config_contents}"
           redis_config_file = File.open("#{Dir.pwd}/tmp/redis_#{@runner_num.to_s}_config", "w") # Tempfile.new("redis-hydra")
