@@ -250,7 +250,10 @@ appendfsync no
       trace "run_dependent_process before thread runner: #{@runner_num} pid: #{pid_file_name}, log: #{log_file_name}"
       Thread.new do
         trace "run_dependent_process inside thread runner: #{@runner_num} pid: #{pid_file_name}, log: #{log_file_name}"
+        tries = 0
         loop do
+          tries += 1
+          stop && break if tries > 10
           cmd = yield
           cmd = "strace -fF -ttt -s 200 #{cmd}" if @verbose
           trace "run_dependent_process before fork runner #{@runner_num} cmd: #{cmd}"
