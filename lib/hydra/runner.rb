@@ -151,20 +151,14 @@ appendfsync no
         end
         
 
-        cmd = <<-CMD
-          rake db:drop --trace 2>&1
-          rake db:create:all --trace 2>&1
-        CMD
-        trace "DB CREATE env: #{ENV['RAILS_ENV']} #{ENV['TEST_ENV_NUMBER']} -> " + `#{cmd}`
+        run_shell_command("rake db:drop --trace 2>&1", "DB DROP")
+        run_shell_command("rake db:create:all --trace 2>&1", "DB CREATE")
         
         ENV['SKIP_ROLLOUT_FETCH'] = "true"
         
         old_env = ENV['RAILS_ENV']
         ENV['RAILS_ENV'] = "development"
-        cmd = <<-CMD
-          rake db:test:load_structure --trace 2>&1
-        CMD
-        trace "DB LOAD STRUCTURE env: #{ENV['RAILS_ENV']} #{ENV['TEST_ENV_NUMBER']} -> " + `#{cmd}`
+        run_shell_command("rake db:test:load_structure --trace 2>&1", "DB LOAD STRUCTURE")
         ENV['RAILS_ENV'] = old_env
         
 
@@ -187,6 +181,14 @@ appendfsync no
       end
     end
     
+    def run_shell_command(cmd, msg)
+      result = `#{cmd}`
+      status = $?
+      trace_msg = "#{msg} env: #{ENV['RAILS_ENV']} #{ENV['TEST_ENV_NUMBER']} (exited: #{status.inspect}) -> #{result}"
+      trace trace_msg
+      raise "Error running #{cmd} #{trace_msg}" unless status.success?
+    end
+
     def wait_for_processes_to_start
       trace "runner #{@runner_num.to_s} about to enter waiting for services to start loop"
       loop do
