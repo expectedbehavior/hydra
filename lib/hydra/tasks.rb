@@ -38,7 +38,7 @@ module Hydra #:nodoc:
 
     attr_accessor :environment
 
-    attr_accessor :runner_opts
+    attr_accessor :test_opts, :test_failure_guard_regexp
 
     # Set to false if you don't want to show the total running time
     attr_accessor :show_time
@@ -89,7 +89,8 @@ module Hydra #:nodoc:
       @show_time = true
       @environment = ENV['RAILS_ENV']
 
-      @runner_opts = ""
+      @test_opts = ""
+      @test_failure_guard_regexp = ""
 
       yield self if block_given?
 
@@ -103,7 +104,8 @@ module Hydra #:nodoc:
         :files => @files,
         :listeners => @listeners,
         :environment => @environment,
-        :runner_opts => @runner_opts,
+        :test_opts => @test_opts,
+        :test_failure_guard_regexp => @test_failure_guard_regexp,
         :runner_log_file => @runner_log_file
       }
       if @config

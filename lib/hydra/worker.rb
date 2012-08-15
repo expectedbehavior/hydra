@@ -21,7 +21,8 @@ module Hydra #:nodoc:
       @runners = []
       @listeners = []
 
-      @runner_opts = opts.fetch(:runner_opts) { "" }
+      @test_opts = opts.fetch(:test_opts) { "" }
+      @test_failure_guard_regexp = opts.fetch(:test_failure_guard_regexp) { "" }
 
       load_worker_initializer
 
@@ -103,7 +104,7 @@ module Hydra #:nodoc:
         child = SafeFork.fork do
           pipe.identify_as_child
           at_exit { trace "at_exit #{ENV['TEST_ENV_NUMBER']} #{Process.pid}" }
-          Hydra::Runner.new(:io => pipe, :verbose => @verbose, :runner_opts => @runner_opts, :runner_listeners => @runner_event_listeners, :runner_log_file => @runner_log_file, :remote => @remote, :runner_num => runner_num)
+          Hydra::Runner.new(:io => pipe, :verbose => @verbose, :test_opts => @test_opts, :test_failure_guard_regexp => @test_failure_guard_regexp, :runner_listeners => @runner_event_listeners, :runner_log_file => @runner_log_file, :remote => @remote, :runner_num => runner_num)
           trace "After runner, before runner exit"
           trace Thread.list.inspect
           exit

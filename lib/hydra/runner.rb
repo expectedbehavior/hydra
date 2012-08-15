@@ -36,7 +36,8 @@ module Hydra #:nodoc:
 
       $stdout.sync = true
 
-      @runner_opts = opts.fetch(:runner_opts) { "" }
+      @test_opts = opts.fetch(:test_opts) { "" }
+      @test_failure_guard_regexp = opts.fetch(:test_failure_guard_regexp) { "" }
 
       ENV['HYDRA_VERBOSE'] = "true" if @verbose
 
@@ -459,7 +460,8 @@ appendfsync no
       Hydra::TestProcessor::Spec.new(file,
                                      :verbose => @verbose,
                                      :runner_num => @runner_num,
-                                     :runner_opts => @runner_opts).process!
+                                     :test_opts => @test_opts,
+                                     :test_failure_guard_regexp => @test_failure_guard_regexp).process!
     end
 
     # run all the scenarios in a cucumber feature file
@@ -467,7 +469,8 @@ appendfsync no
       Hydra::TestProcessor::Cucumber.new(file,
                                      :verbose => @verbose,
                                      :runner_num => @runner_num,
-                                     :runner_opts => @runner_opts).process!
+                                     :test_opts => @test_opts,
+                                     :test_failure_guard_regexp => @test_failure_guard_regexp).process!
     end
 
     def run_javascript_file(file)
