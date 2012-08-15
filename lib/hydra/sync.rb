@@ -7,7 +7,7 @@ module Hydra #:nodoc:
     traceable('SYNC')
     self.class.traceable('SYNC MANY')
 
-    attr_reader :connect, :ssh_opts, :remote_dir
+    attr_reader :connect, :ssh_opts, :remote_dir, :worker_opts
 
     # Create a new Sync instance to rsync source from the local machine to a remote worker
     #
@@ -21,12 +21,12 @@ module Hydra #:nodoc:
     #   * Set to true to see lots of Hydra output (for debugging)
     def initialize(worker_opts, sync_opts, verbose = false)
       trace "  Sync:   (#{sync_opts.inspect})"
-      worker_opts ||= {}
-      worker_opts.stringify_keys!
+      @worker_opts = worker_opts || {}
+      @worker_opts.stringify_keys!
       @verbose = verbose
-      @connect = worker_opts.fetch('connect') { raise "You must specify an SSH connection target" }
-      @ssh_opts = worker_opts.fetch('ssh_opts') { "" }
-      @remote_dir = worker_opts.fetch('directory') { raise "You must specify a remote directory" }
+      @connect = @worker_opts.fetch('connect') { raise "You must specify an SSH connection target" }
+      @ssh_opts = @worker_opts.fetch('ssh_opts') { "" }
+      @remote_dir = @worker_opts.fetch('directory') { raise "You must specify a remote directory" }
 
       return unless sync_opts
       sync_opts.stringify_keys!
@@ -35,7 +35,7 @@ module Hydra #:nodoc:
       @rsync_opts = sync_opts.fetch('rsync_opts') { "" }
 
       trace "Initialized"
-      trace "  Worker: (#{worker_opts.inspect})"
+      trace "  Worker: (#{@worker_opts.inspect})"
       trace "  Sync:   (#{sync_opts.inspect})"
 
 #       sync
@@ -96,14 +96,14 @@ module Hydra #:nodoc:
       Thread.abort_on_exception = true
       trace "Processing workers"
       @listeners = []
-      @remote_worker_opts.each do |worker_opts|
-        sync_opts = @sync.dup
+      syncers = @remote_worker_opts.map { |worker_opts| Sync.new(worker_opts, @sync.dup, @verbose) }
+      syncers.each do |syncer|
         @listeners << Thread.new do
           begin
-            trace "Syncing #{worker_opts.inspect}"
-            Sync.new(worker_opts, sync_opts, @verbose).sync
+            trace "Syncing #{syncer.worker_opts.inspect}"
+            syncer.sync
           rescue 
-            trace "Syncing failed [#{worker_opts.inspect}]\n#{$!.message}\n#{$!.backtrace}"
+            trace "Syncing failed [#{syncer.worker_opts.inspect}]\n#{$!.message}\n#{$!.backtrace}"
             raise
           end
         end
