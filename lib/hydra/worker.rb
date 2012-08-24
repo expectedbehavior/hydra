@@ -15,6 +15,8 @@ module Hydra #:nodoc:
     # * io: The IO object to use to communicate with the master
     # * num_runners: The number of runners to launch
     def initialize(opts = {})
+      Encoding.default_external = Encoding::UTF_8
+      Encoding.default_internal = Encoding::UTF_8
       @verbose = opts.fetch(:verbose) { false }
       @remote = opts.fetch(:remote) { false }
       @io = opts.fetch(:io) { raise "No IO Object" }
