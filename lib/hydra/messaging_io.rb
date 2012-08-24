@@ -1,4 +1,4 @@
-require 'system_timer'
+require 'timeout'
 module Hydra #:nodoc:
   # Module that implemets methods that auto-serialize and deserialize messaging
   # objects.

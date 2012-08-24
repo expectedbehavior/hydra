@@ -1,5 +1,5 @@
 require 'thread'
-require 'system_timer'
+require 'timeout'
 require 'syslog_logger'
 module Hydra #:nodoc:
   # Trace output when in verbose mode.
@@ -24,7 +24,7 @@ module Hydra #:nodoc:
       # Checks to ensure we're running verbosely.
       def trace(str)
         return unless @verbose
-        SystemTimer.timeout_after(300) do
+        Timeout.timeout(300) do
           Hydra::WRITE_LOCK.synchronize do
             remote_info = @remote ? "#{REMOTE_IDENTIFIER} #{@remote} " : ''
             str = str.gsub /\n/, "\n#{remote_info}"

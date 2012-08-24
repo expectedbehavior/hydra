@@ -2,7 +2,7 @@
 # require 'test/unit/testresult'
 # Test::Unit.run = true
 require 'thread'
-require 'system_timer'
+require 'timeout'
 require 'tempfile'
 
 module Hydra #:nodoc:
@@ -319,7 +319,7 @@ appendfsync no
     def is_port_in_use?(port, ip = "localhost")
       trace "runner #{@runner_num.to_s} is port in use: #{port}"
       begin
-        SystemTimer.timeout_after(1) do
+        Timeout.timeout(1) do
           begin
             s = TCPSocket.new(ip, port)
             s.close
