@@ -235,7 +235,7 @@ module Hydra #:nodoc:
     end
 
     def sort_files_from_report
-      if File.exists? heuristic_file
+      if File.exists? heuristic_file and File.read(heuristic_file).present?
         report = YAML.load_file(heuristic_file)
         return unless report
         sorted_files = report.sort{ |a,b|
