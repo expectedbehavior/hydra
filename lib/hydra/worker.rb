@@ -86,6 +86,7 @@ module Hydra #:nodoc:
         trace "Sending Shutdown to Runner #{r[:runner_num]}"
         trace "\t#{r.inspect}"
         begin
+          r[:shutdown] = true
           r[:io].write(Shutdown.new)
           r[:io].close
         rescue Exception => e
@@ -180,7 +181,7 @@ module Hydra #:nodoc:
               trace "Worker lost Runner [#{r.inspect}]"
               r[:error] = ex
               shutdown unless runners_remaining?
-              raise unless ex.kind_of? IOError
+              raise unless ex.kind_of?(IOError) && r[:shutdown] # ignore shutdown error
               Thread.exit
             end
           end
