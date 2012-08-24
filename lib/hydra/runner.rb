@@ -98,6 +98,7 @@ appendfsync no
         trace "DB DROP FORK before fork env: #{ENV['RAILS_ENV']} #{ENV['TEST_ENV_NUMBER']} parent pid: #{parent_pid}, my pid: #{Process.pid}"
         # this should really clean up after the runner dies
         fork do
+          Hydra.send(:remove_const, :WRITE_LOCK)
           Hydra.const_set(:WRITE_LOCK, Monitor.new)
           trace "DB DROP FORK before setsid env: #{ENV['RAILS_ENV']} #{ENV['TEST_ENV_NUMBER']} parent pid: #{parent_pid}, my pid: #{Process.pid}"
           Process.setsid
