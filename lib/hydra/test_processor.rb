@@ -37,7 +37,10 @@ module Hydra
     end
 
     def hydra_output_is_clean?
-      hydra_output.gsub(/Run options.*?$/, '').gsub("\n","").gsub('TEST_COMPLETED', '') =~ /^\.*$/
+      hydra_output.gsub(/Run options.*?$/, '').
+        gsub("\n","").
+        gsub('TEST_COMPLETED', '').
+        gsub(/Randomized with seed \d+/, '') =~ /^\.*$/
     end
 
     def stdout_is_clean?
