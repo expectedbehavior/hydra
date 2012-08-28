@@ -5,7 +5,7 @@ module Hydra #:nodoc:
     # Hydra formatter for cucumber.
     # Stifles all output except error messages
     # Based on the
-    class Formatter < ::Cucumber::Formatter::Progress
+    class HydraFormatter < ::Cucumber::Formatter::Progress
       # Removed the extra newlines here
       def after_features(features)
         print_summary(features)

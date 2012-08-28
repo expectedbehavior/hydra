@@ -3,7 +3,7 @@ module Hydra
     class Cucumber < Hydra::TestProcessor
 
       def command
-        "bundle exec cucumber -b #{@test_opts} --require hydra/cucumber/formatter --format Hydra::Cucumber::Formatter --out #{log_file} #{file} 2>&1 | tee #{tee_flags} #{log_file_name}"
+        "bundle exec cucumber -b #{@test_opts} --require hydra/cucumber/hydra_formatter --format Hydra::Cucumber::HydraFormatter --out #{log_file} #{file} 2>&1 | tee #{tee_flags} #{log_file_name}"
       end
 
       def run_completed_normally?
