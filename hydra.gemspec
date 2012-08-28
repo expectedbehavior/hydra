@@ -30,7 +30,7 @@ Gem::Specification.new do |s|
      "hydra.gemspec",
      "hydra_gray.png",
      "lib/hydra.rb",
-     "lib/hydra/cucumber/formatter.rb",
+     "lib/hydra/cucumber/hydra_formatter.rb",
      "lib/hydra/hash.rb",
      "lib/hydra/js/lint.js",
      "lib/hydra/listener/abstract.rb",
