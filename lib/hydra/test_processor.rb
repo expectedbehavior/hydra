@@ -29,7 +29,7 @@ module Hydra
     end
 
     def log_file
-      temp_output.path
+      @log_file ||= temp_output.path
     end
 
     def run_completed_normally?
