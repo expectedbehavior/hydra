@@ -44,9 +44,16 @@ module Hydra
     end
 
     def stdout_is_clean?
-      trace "stdout_is_clean? test_failure_guard_regexp: #{test_failure_guard_regexp}, include?: #{stdout.include?(test_failure_guard_regexp)}"
+      trace "stdout_is_clean? test_failure_guard_regexp: #{test_failure_guard_regexp.inspect}"
       return true if test_failure_guard_regexp.empty?
-      not stdout.match(/#{test_failure_guard_regexp}/)
+      trace "stdout_is_clean? before match"
+      match = begin
+                Timeout.timeout(10) { stdout.match(/#{test_failure_guard_regexp}/) }
+              rescue Timeout::Error
+                raise "Timeout checking if stdout is clean.  Check your regexp for infinite loops."
+              end
+      trace "stdout_is_clean? failure match: #{match.inspect}"
+      not match
     end
 
     def run_succeeded?
