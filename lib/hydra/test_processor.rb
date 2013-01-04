@@ -10,6 +10,7 @@ module Hydra
       self.test_opts = options[:test_opts]
       self.test_failure_guard_regexp = options[:test_failure_guard_regexp]
       self.file = file
+      @errors = []
     end
 
     def process!
@@ -44,22 +45,24 @@ module Hydra
     end
 
     def stdout_is_clean?
+      return @stdout_is_clean if defined?(@stdout_is_clean)
       trace "stdout_is_clean? test_failure_guard_regexp: #{test_failure_guard_regexp.inspect}"
-      return true if test_failure_guard_regexp.empty?
+      @stdout_is_clean = true and return @stdout_is_clean if test_failure_guard_regexp.empty?
       trace "stdout_is_clean? before match"
       match = begin
                 Timeout.timeout(10) { stdout.match(/#{test_failure_guard_regexp}/) }
               rescue Timeout::Error
-                raise "Timeout checking if stdout is clean.  Check your regexp for infinite loops."
+                @errors << "Hydra Exception: Timeout checking if stdout is clean.  Check your test_failure_guard_regexp regexp for infinite loops."
               end
       trace "stdout_is_clean? failure match: #{match.inspect}"
-      not match
+      @stdout_is_clean = !match
     end
 
     def run_succeeded?
       exit_status.success? and
         hydra_output_is_clean? and
-        stdout_is_clean?
+        stdout_is_clean? and
+        @errors.empty?
     end
 
     def process_output
@@ -73,14 +76,12 @@ module Hydra
       end
     end
 
+    def formatted_errors
+      @errors.map { |e| "        #{e}" }.join("\n")
+    end
+
     def failure_message
       <<-STR
-      FAILURE: command:
-        #{command}
-      run_completed_normally?: #{!!run_completed_normally?}
-      exit_status: #{exit_status.inspect}
-      hydra_output_is_clean?: #{!!hydra_output_is_clean?}
-      stdout_is_clean?: #{!!stdout_is_clean?}
       HYDRA OUTPUT HYDRA OUTPUT HYDRA OUTPUT HYDRA OUTPUT HYDRA OUTPUT HYDRA OUTPUT HYDRA OUTPUT
         #{hydra_output}
       HYDRA OUTPUT HYDRA OUTPUT HYDRA OUTPUT HYDRA OUTPUT HYDRA OUTPUT HYDRA OUTPUT HYDRA OUTPUT
@@ -89,6 +90,18 @@ module Hydra
       STDOUT STDOUT STDOUT STDOUT STDOUT STDOUT STDOUT STDOUT STDOUT STDOUT STDOUT STDOUT STDOUT
         #{stdout}
       STDOUT STDOUT STDOUT STDOUT STDOUT STDOUT STDOUT STDOUT STDOUT STDOUT STDOUT STDOUT STDOUT
+
+      run_completed_normally?: #{!!run_completed_normally?}
+      exit_status: #{exit_status.inspect}
+      hydra_output_is_clean?: #{!!hydra_output_is_clean?}
+      stdout_is_clean?: #{!!stdout_is_clean?}
+      hydra errors: #{@errors.empty? ? "none" : ""}
+#{formatted_errors}
+
+      FAILURE: The command below failed to complete successfully.
+        #{command}
+
+      Additional information can be found above.
       STR
     end
 
