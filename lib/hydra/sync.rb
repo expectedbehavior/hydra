@@ -33,6 +33,7 @@ module Hydra #:nodoc:
       @local_dir = sync_opts.fetch('directory') { raise "You must specify a synchronization directory" }
       @exclude_paths = sync_opts.fetch('exclude') { [] }
       @rsync_opts = sync_opts.fetch('rsync_opts') { "" }
+      @reverse_sync_direction = sync_opts.fetch('reverse_sync_direction') { false }
 
       trace "Initialized"
       trace "  Worker: (#{@worker_opts.inspect})"
@@ -49,16 +50,20 @@ module Hydra #:nodoc:
       #trace "Synchronizing with #{connect}\n\t#{sync_opts.inspect}"
       exclude_opts = @exclude_paths.inject(''){|memo, path| memo += "--exclude=#{path} "}
 
+      src_dest = [
+        File.expand_path(@local_dir)+'/',
+        "#{@connect}:#{@remote_dir}"
+      ]
+      src_dest.reverse! if @reverse_sync_direction
       rsync_command = [
         'time',
         'rsync',
         '-avz',
         '--delete',
         exclude_opts,
-        File.expand_path(@local_dir)+'/',
         "-e \"ssh #{@ssh_opts}\"",
         @rsync_opts,
-        "#{@connect}:#{@remote_dir}"
+        *src_dest
       ].join(" ")
       rsync_command = "(#{rsync_command}) 2>&1" # capture all output
       trace rsync_command
