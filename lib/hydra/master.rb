@@ -223,7 +223,11 @@ module Hydra #:nodoc:
                 message.handle(self, worker)
               end
             rescue IOError
-              raise "Lost Worker [#{worker.inspect}] #{$!.message}\n#{$!.backtrace}" unless worker[:shutdown]
+              if worker[:shutdown]
+                Thread.exit # ignore and exit silently
+              else
+                raise "Lost Worker [#{worker.inspect}] #{$!.message}\n#{$!.backtrace}"
+              end
             end
           end
         end
