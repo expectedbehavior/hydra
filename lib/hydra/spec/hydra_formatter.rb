@@ -19,7 +19,7 @@ module Spec
         end
 
         def failure_output(example, exception)
-          red("#{example.full_description.strip} (FAILED - #{next_failure_index})")
+          failure_color("#{example.full_description.strip} (FAILED - #{next_failure_index})")
         end
 
         def next_failure_index
