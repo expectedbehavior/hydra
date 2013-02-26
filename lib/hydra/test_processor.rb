@@ -91,6 +91,8 @@ module Hydra
         #{stdout}
       STDOUT STDOUT STDOUT STDOUT STDOUT STDOUT STDOUT STDOUT STDOUT STDOUT STDOUT STDOUT STDOUT
 
+      hydra server: #{`hostname`.strip}
+      hydra runner: #{runner_num}
       run_completed_normally?: #{!!run_completed_normally?}
       exit_status: #{exit_status.inspect}
       hydra_output_is_clean?: #{!!hydra_output_is_clean?}
