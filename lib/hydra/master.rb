@@ -185,6 +185,7 @@ module Hydra #:nodoc:
       trace "Shutting down all workers"
       @workers.map do |worker|
         Thread.new do
+          worker[:shutdown] = true
           worker[:io].write(Shutdown.new) if worker[:io]
           trace "worker[:io]: #{worker[:io].inspect}"
           begin
@@ -222,7 +223,7 @@ module Hydra #:nodoc:
                 message.handle(self, worker)
               end
             rescue IOError
-              raise "Lost Worker [#{worker.inspect}] #{$!.message}\n#{$!.backtrace}"
+              raise "Lost Worker [#{worker.inspect}] #{$!.message}\n#{$!.backtrace}" unless worker[:shutdown]
             end
           end
         end
