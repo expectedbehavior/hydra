@@ -355,12 +355,15 @@ appendfsync no
     # Run a test file and report the results
     def run_file(file)
       trace "Running file: #{file}"
+      file_and_opts = file
+      test_opts = file_and_opts[:test_opts]
+      file = file_and_opts[:file]
 
       output = ""
       if file =~ /_spec.rb$/i || file =~ /spec\/? -e/i
-        output = run_rspec_file(file)
+        output = run_rspec_file(file, test_opts)
       elsif file =~ /.feature$/i
-        output = run_cucumber_file(file)
+        output = run_cucumber_file(file, test_opts)
       elsif file =~ /.js$/i or file =~ /.json$/i
         output = run_javascript_file(file)
       else
@@ -369,7 +372,7 @@ appendfsync no
 
       output = "." if output == ""
 
-      @io.write Results.new(:output => output, :file => file)
+      @io.write Results.new(:output => output, :file => file_and_opts)
       return output
     end
 
@@ -456,21 +459,21 @@ appendfsync no
     end
 
     # run all the Specs in an RSpec file (NOT IMPLEMENTED)
-    def run_rspec_file(file)
+    def run_rspec_file(file, test_opts)
       trace "about to process spec file: #{file}"
       Hydra::TestProcessor::Spec.new(file,
                                      :verbose => @verbose,
                                      :runner_num => @runner_num,
-                                     :test_opts => @test_opts,
+                                     :test_opts => test_opts || @test_opts,
                                      :test_failure_guard_regexp => @test_failure_guard_regexp).process!
     end
 
     # run all the scenarios in a cucumber feature file
-    def run_cucumber_file(file)
+    def run_cucumber_file(file, test_opts)
       Hydra::TestProcessor::Cucumber.new(file,
                                      :verbose => @verbose,
                                      :runner_num => @runner_num,
-                                     :test_opts => @test_opts,
+                                     :test_opts => test_opts || @test_opts,
                                      :test_failure_guard_regexp => @test_failure_guard_regexp).process!
     end
 

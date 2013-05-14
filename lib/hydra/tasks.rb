@@ -63,8 +63,8 @@ module Hydra #:nodoc:
     # For example:
     #
     #   t.add_files 'test/units/*.rb'
-    def add_files(pattern)
-      @files += Dir.glob(pattern)
+    def add_files(pattern, options = {})
+      @files += Dir.glob(pattern).map { |f| options.merge(:file => f) }
     end
 
   end
