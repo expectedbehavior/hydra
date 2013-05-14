@@ -24,6 +24,7 @@ module Hydra #:nodoc:
         rescue SyntaxError, NameError
           # uncomment to help catch remote errors by seeing all traffic
           trace "Not a message: [#{message.inspect}]\n"
+          raise # failing fast is important
         end
       end
     end
