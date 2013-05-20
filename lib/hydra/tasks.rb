@@ -313,6 +313,7 @@ module Hydra #:nodoc:
       $stdout.write "==== Hydra Running #{@name} on #{worker['connect']} ====\n"
       ssh_opts = worker.fetch('ssh_opts') { '' }
       writer, reader, error = popen3("ssh -tt #{ssh_opts} #{worker['connect']} ")
+      writer.write("mkdir -p #{worker['directory']}\n")
       writer.write("cd #{worker['directory']}\n")
       writer.write "echo BEGIN HYDRA\n"
       writer.write(command + "\r")
