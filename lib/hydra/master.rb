@@ -246,8 +246,9 @@ module Hydra #:nodoc:
           (b[1]['duration'] || 0) <=> (a[1]['duration'] || 0)
         }.collect{|tuple| tuple[0]}
 
-        sorted_files.each do |f|
-          @files.push(@files.delete_at(@files.index(f))) if @files.index(f)
+        @files.sort_by! do |f|
+          f = f[:file] if f.is_a?(Hash)
+          sorted_files.index(f) || -1
         end
       end
     end

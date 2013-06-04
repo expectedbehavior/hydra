@@ -9,6 +9,7 @@ module Hydra #:nodoc:
 
       # Log the start time of a file
       def file_begin(file)
+        file = file[:file] if file.is_a?(Hash)
         @report[file] ||= { }
         @report[file]['start'] = Time.now.to_f
       end
@@ -16,6 +17,7 @@ module Hydra #:nodoc:
       # Log the end time of a file and compute the file's testing
       # duration
       def file_end(file, output)
+        file = file[:file] if file.is_a?(Hash)
         @report[file]['end'] = Time.now.to_f
         @report[file]['duration'] = @report[file]['end'] - @report[file]['start']
       end
