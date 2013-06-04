@@ -92,8 +92,9 @@ appendfsync no
           "redis-server #{redis_config_file.path}"
         end
 
+
+        wait_for_processes_to_start('MEMCACHED_PORT', 'REDIS_PORT')
         
-        wait_for_processes_to_start
         
         
         trace "DB DROP FORK before fork env: #{ENV['RAILS_ENV']} #{ENV['TEST_ENV_NUMBER']} parent pid: #{parent_pid}, my pid: #{Process.pid}"
@@ -192,17 +193,14 @@ appendfsync no
       raise "Error running #{cmd} #{trace_msg}" unless status.success?
     end
 
-    def wait_for_processes_to_start
+    def wait_for_processes_to_start(*port_env_vars)
       trace "runner #{@runner_num.to_s} about to enter waiting for services to start loop"
       loop do
         trace "runner #{@runner_num.to_s} waiting for services to start..."
         finished = false
         ports = nil
         LOCK.synchronize do
-          ports = [
-                   ENV['MEMCACHED_PORT'],
-                   ENV['REDIS_PORT']
-                  ].map { |p| p.to_i }
+          ports = port_env_vars.flatten.map { |v| ENV[v].to_i }
         end
         if ports.all? { |p| is_port_in_use?(p) }
           finished = true
