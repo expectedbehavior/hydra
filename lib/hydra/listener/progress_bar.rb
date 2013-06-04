@@ -14,7 +14,7 @@ module Hydra #:nodoc:
       # Increment completed files count and update bar
       def file_end(file, output)
         unless output == '.'
-          write "\r#{' '*60}\r#{output}\n"
+          write "\n\r#{' '*60}\r#{output}\n"
           @errors = true
         end
         @files_completed += 1
