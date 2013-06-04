@@ -44,6 +44,7 @@ module Hydra #:nodoc:
       trace 'Creating test database'
       parent_pid = Process.pid
       ENV['TEST_ENV_NUMBER'] = parent_pid.to_s
+      ENV['HYDRA_RUNNER_NUM'] = @runner_num.to_s
       begin
         
         
