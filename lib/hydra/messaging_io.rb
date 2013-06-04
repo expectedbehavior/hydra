@@ -23,7 +23,7 @@ module Hydra #:nodoc:
           return Message.build(eval(message.chomp))
         rescue SyntaxError, NameError
           # uncomment to help catch remote errors by seeing all traffic
-          trace "Not a message: [#{message.inspect}]\n"
+          puts "Not a message: [#{message.inspect}]\n"
           raise # failing fast is important
         end
       end
