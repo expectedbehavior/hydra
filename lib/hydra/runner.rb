@@ -95,76 +95,76 @@ appendfsync no
 
         wait_for_processes_to_start('MEMCACHED_PORT', 'REDIS_PORT')
         
-        
-        
-        trace "DB DROP FORK before fork env: #{ENV['RAILS_ENV']} #{ENV['TEST_ENV_NUMBER']} parent pid: #{parent_pid}, my pid: #{Process.pid}"
-        # this should really clean up after the runner dies
-        fork do
-          Hydra.send(:remove_const, :WRITE_LOCK)
-          Hydra.const_set(:WRITE_LOCK, Monitor.new)
-          trace "DB DROP FORK before setsid env: #{ENV['RAILS_ENV']} #{ENV['TEST_ENV_NUMBER']} parent pid: #{parent_pid}, my pid: #{Process.pid}"
-          Process.setsid
-          trace "DB DROP FORK after setsid env: #{ENV['RAILS_ENV']} #{ENV['TEST_ENV_NUMBER']} parent pid: #{parent_pid}, my pid: #{Process.pid}"
-          trap 'SIGHUP', 'IGNORE'
-          fork do
-            begin
-              3.upto(1023) do |fd|
-                begin
-                  if io = IO::new(fd)
-                    io.close
-                  end
-                rescue
-                end
-              end
-              STDIN.reopen '/dev/null'
-              redirect_output( @runner_log_file + 'cleanup' )
-              
-              memcached_pid = pid_from_file(memcached_pid_file_name, memcached_log_file_name)
-              redis_pid = pid_from_file(redis_pid_file_name, redis_log_file_name)
-              start = Time.now
-              six_hours = 60 * 60 * 6 # if this fork somehow sticks around 6 hours, shut 'er down
-
-              i = 0
-              interval = 0.1
-              while (Process.kill(0, parent_pid) rescue nil) and Time.now < start + six_hours
-                if (i += 1) % (60 / interval) == 0
-                  trace "DB DROP FORK loop env: #{ENV['RAILS_ENV']} #{ENV['TEST_ENV_NUMBER']} parent pid: #{parent_pid}, my pid: #{Process.pid}"
-                end
-                sleep interval
-              end
-              # sometimes the db drop dies because redis is already dead, should we just use mysql?
-              cmd = <<-CMD
-                rake db:drop --trace 2>&1
-              CMD
-              trace "DB DROP FORK after loop env: #{ENV['RAILS_ENV']} #{ENV['TEST_ENV_NUMBER']} parent pid: #{parent_pid}, my pid: #{Process.pid}"
-              trace "DB DROP FORK run env: #{ENV['RAILS_ENV']} #{ENV['TEST_ENV_NUMBER']} parent pid: #{parent_pid}, my pid: #{Process.pid} -> " + `#{cmd}`
-              
-              trace "DB DROP FORK before kill memcached env: #{ENV['RAILS_ENV']} #{ENV['TEST_ENV_NUMBER']} parent pid: #{parent_pid}, my pid: #{Process.pid}"
-              kill_external_process_pid(memcached_pid, memcached_pid_file_name, memcached_log_file_name)
-              trace "DB DROP FORK before kill redis env: #{ENV['RAILS_ENV']} #{ENV['TEST_ENV_NUMBER']} parent pid: #{parent_pid}, my pid: #{Process.pid}"
-              kill_external_process_pid(redis_pid, redis_pid_file_name, redis_log_file_name)
-              trace "DB DROP FORK after killing env: #{ENV['RAILS_ENV']} #{ENV['TEST_ENV_NUMBER']} parent pid: #{parent_pid}, my pid: #{Process.pid}"
-            rescue Exception => e
-              puts "DB DROP FORK exception env: #{ENV['RAILS_ENV']} #{ENV['TEST_ENV_NUMBER']} parent pid: #{parent_pid}, my pid: #{Process.pid}, exception: #{e.inspect}, backtrace: #{e.backtrace}"
-              trace "DB DROP FORK exception env: #{ENV['RAILS_ENV']} #{ENV['TEST_ENV_NUMBER']} parent pid: #{parent_pid}, my pid: #{Process.pid}, exception: #{e.inspect}, backtrace: #{e.backtrace}"
-            ensure
-              puts "DB DROP FORK ensure env: #{ENV['RAILS_ENV']} #{ENV['TEST_ENV_NUMBER']} parent pid: #{parent_pid}, my pid: #{Process.pid}, exception: #{$!.inspect}, backtrace: #{$! && $!.backtrace}"
-              trace "DB DROP FORK ensure env: #{ENV['RAILS_ENV']} #{ENV['TEST_ENV_NUMBER']} parent pid: #{parent_pid}, my pid: #{Process.pid}, exception: #{$!.inspect}, backtrace: #{$! && $!.backtrace}"
-            end
-          end
-        end
-        
 
         run_shell_command("rake db:drop --trace 2>&1", "DB DROP")
         run_shell_command("rake db:create:all --trace 2>&1", "DB CREATE")
-        
+
         ENV['SKIP_ROLLOUT_FETCH'] = "true"
-        
+
         old_env = ENV['RAILS_ENV']
         ENV['RAILS_ENV'] = "development"
         run_shell_command("rake db:test:load_structure --trace 2>&1", "DB LOAD STRUCTURE")
         ENV['RAILS_ENV'] = old_env
+
+
+
+
+        spec_spork_pid_file_name = "#{Dir.pwd}/log/runner_#{@runner_num}_spec_spork.pid"
+        spec_spork_log_file_name = "#{Dir.pwd}/log/spec_spork_#{@runner_num.to_s}.log"
+        run_dependent_process(spec_spork_pid_file_name, spec_spork_log_file_name) do
+          LOCK.synchronize do
+            ENV['SPEC_SPORK_PORT'] = find_open_port.to_s
+          end
+          "bin/spork RSpec -p #{ENV['SPEC_SPORK_PORT']}"
+        end
+
+
+        cucumber_spork_pid_file_name = "#{Dir.pwd}/log/runner_#{@runner_num}_cucumber_spork.pid"
+        cucumber_spork_log_file_name = "#{Dir.pwd}/log/cucumber_spork_#{@runner_num.to_s}.log"
+        run_dependent_process(cucumber_spork_pid_file_name, cucumber_spork_log_file_name) do
+          LOCK.synchronize do
+            ENV['CUCUMBER_SPORK_PORT'] = find_open_port.to_s
+          end
+          "bin/spork Cucumber -p #{ENV['CUCUMBER_SPORK_PORT']}"
+        end
+
+        wait_for_processes_to_start('SPEC_SPORK_PORT', 'CUCUMBER_SPORK_PORT')
+
+
         
+
+        # It's important to get the PIDs before waiting on the runner to die because the PIDs could
+        # be replaced by subsequent runs.
+        proc_infos =
+          [
+           {:name => "memcached", :pid_file => memcached_pid_file_name, :log_file => memcached_log_file_name},
+           {:name => "redis", :pid_file => redis_pid_file_name, :log_file => redis_log_file_name},
+           {:name => "spec_spork", :pid_file => spec_spork_pid_file_name, :log_file => spec_spork_log_file_name},
+           {:name => "cucumber_spork", :pid_file => cucumber_spork_pid_file_name, :log_file => cucumber_spork_log_file_name},
+          ]
+        proc_infos.each do |proc_info|
+          proc_info[:pid] = pid_from_file(proc_info[:pid_file], proc_info[:log_file])
+        end
+
+        fork_cleanup_process(parent_pid) do
+          # sometimes the db drop dies because redis is already dead, should we just use mysql?
+          cmd = <<-CMD
+            rake db:drop --trace 2>&1
+          CMD
+          trace "DB DROP FORK after loop env: #{ENV['RAILS_ENV']} #{ENV['TEST_ENV_NUMBER']} parent pid: #{parent_pid}, my pid: #{Process.pid}"
+          trace "DB DROP FORK run env: #{ENV['RAILS_ENV']} #{ENV['TEST_ENV_NUMBER']} parent pid: #{parent_pid}, my pid: #{Process.pid} -> " + `#{cmd}`
+
+
+          proc_infos.each do |proc_info|
+            trace "DB DROP FORK before kill #{proc_info[:name]} env: #{ENV['RAILS_ENV']} #{ENV['TEST_ENV_NUMBER']} parent pid: #{parent_pid}, my pid: #{Process.pid}"
+            kill_external_process_pid(proc_info[:pid], proc_info[:pid_file], proc_info[:log_file])
+            trace "DB DROP FORK after killing #{proc_info[:name]} env: #{ENV['RAILS_ENV']} #{ENV['TEST_ENV_NUMBER']} parent pid: #{parent_pid}, my pid: #{Process.pid}"
+          end
+        end
+
+
+
+
 
       rescue Exception => e
         trace "Error creating test DB: #{e}\n#{e.backtrace}"
@@ -336,6 +336,56 @@ appendfsync no
      
       trace "runner #{@runner_num.to_s} port is used: #{port}"
       return true
+    end
+
+    def fork_cleanup_process(parent_pid, &block)
+      trace "DB DROP FORK before fork env: #{ENV['RAILS_ENV']} #{ENV['TEST_ENV_NUMBER']} parent pid: #{parent_pid}, my pid: #{Process.pid}"
+      # this should really clean up after the runner dies
+      fork do
+        Hydra.send(:remove_const, :WRITE_LOCK)
+        Hydra.const_set(:WRITE_LOCK, Monitor.new)
+        trace "DB DROP FORK before setsid env: #{ENV['RAILS_ENV']} #{ENV['TEST_ENV_NUMBER']} parent pid: #{parent_pid}, my pid: #{Process.pid}"
+        Process.setsid
+        trace "DB DROP FORK after setsid env: #{ENV['RAILS_ENV']} #{ENV['TEST_ENV_NUMBER']} parent pid: #{parent_pid}, my pid: #{Process.pid}"
+        trap 'SIGHUP', 'IGNORE'
+        fork do
+          begin
+            3.upto(1023) do |fd|
+              begin
+                if io = IO::new(fd)
+                  io.close
+                end
+              rescue
+              end
+            end
+            STDIN.reopen '/dev/null'
+            redirect_output( @runner_log_file + 'cleanup' )
+
+            start = Time.now
+            six_hours = 60 * 60 * 6 # if this fork somehow sticks around 6 hours, shut 'er down
+
+            i = 0
+            interval = 0.1
+            while (Process.kill(0, parent_pid) rescue nil) and Time.now < start + six_hours
+              if (i += 1) % (60 / interval) == 0
+                trace "DB DROP FORK loop env: #{ENV['RAILS_ENV']} #{ENV['TEST_ENV_NUMBER']} parent pid: #{parent_pid}, my pid: #{Process.pid}"
+              end
+              sleep interval
+            end
+
+
+            yield
+
+
+          rescue Exception => e
+            puts "DB DROP FORK exception env: #{ENV['RAILS_ENV']} #{ENV['TEST_ENV_NUMBER']} parent pid: #{parent_pid}, my pid: #{Process.pid}, exception: #{e.inspect}, backtrace: #{e.backtrace}"
+            trace "DB DROP FORK exception env: #{ENV['RAILS_ENV']} #{ENV['TEST_ENV_NUMBER']} parent pid: #{parent_pid}, my pid: #{Process.pid}, exception: #{e.inspect}, backtrace: #{e.backtrace}"
+          ensure
+            puts "DB DROP FORK ensure env: #{ENV['RAILS_ENV']} #{ENV['TEST_ENV_NUMBER']} parent pid: #{parent_pid}, my pid: #{Process.pid}, exception: #{$!.inspect}, backtrace: #{$! && $!.backtrace}"
+            trace "DB DROP FORK ensure env: #{ENV['RAILS_ENV']} #{ENV['TEST_ENV_NUMBER']} parent pid: #{parent_pid}, my pid: #{Process.pid}, exception: #{$!.inspect}, backtrace: #{$! && $!.backtrace}"
+          end
+        end
+      end
     end
 
     def reg_trap_sighup
