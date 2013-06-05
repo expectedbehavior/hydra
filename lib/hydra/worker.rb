@@ -105,6 +105,7 @@ module Hydra #:nodoc:
         pipe = Hydra::Pipe.new(:verbose => @verbose)
         trace "After runner pipe #{runner_num}"
         child = SafeFork.fork do
+          Thread.abort_on_exception = true
           pipe.identify_as_child
           at_exit { trace "at_exit #{ENV['TEST_ENV_NUMBER']} #{Process.pid}" }
           Hydra::Runner.new(:io => pipe, :verbose => @verbose, :test_opts => @test_opts, :test_failure_guard_regexp => @test_failure_guard_regexp, :runner_listeners => @runner_event_listeners, :runner_log_file => @runner_log_file, :remote => @remote, :runner_num => runner_num)
