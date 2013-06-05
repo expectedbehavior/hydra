@@ -264,6 +264,7 @@ appendfsync no
           child_pid = fork do
             @io.close
             file = File.open(log_file_name + "-out", "w")
+            File.open(pid_file_name, "w") { |f| f.write Process.pid.to_s }
             STDOUT.reopen(file)
             STDERR.reopen(file)
             exec cmd
