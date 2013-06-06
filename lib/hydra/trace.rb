@@ -22,12 +22,13 @@ module Hydra #:nodoc:
     module InstanceMethods
       # Trace some output with the class's prefix and a newline.
       # Checks to ensure we're running verbosely.
-      def trace(str)
+      def trace(str = nil, &block)
+        str ||= yield if block_given?
         return unless @verbose
         Timeout.timeout(300) do
           Hydra::WRITE_LOCK.synchronize do
             remote_info = @remote ? "#{REMOTE_IDENTIFIER} #{@remote} " : ''
-            str = str.gsub /\n/, "\n#{remote_info}"
+            str = str.to_s.gsub /\n/, "\n#{remote_info}"
             more_info = ""
             more_info << " test env number: #{ENV['TEST_ENV_NUMBER']}" if ENV['TEST_ENV_NUMBER']
             more_info << " runner num: #{@runner_num}" if @runner_num
