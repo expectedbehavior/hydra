@@ -135,14 +135,14 @@ appendfsync no
 
         # It's important to get the PIDs before waiting on the runner to die because the PIDs could
         # be replaced by subsequent runs.
-        proc_infos =
+        @proc_infos =
           [
            {:name => "memcached", :pid_file => memcached_pid_file_name, :log_file => memcached_log_file_name},
            {:name => "redis", :pid_file => redis_pid_file_name, :log_file => redis_log_file_name},
            {:name => "spec_spork", :pid_file => spec_spork_pid_file_name, :log_file => spec_spork_log_file_name},
            {:name => "cucumber_spork", :pid_file => cucumber_spork_pid_file_name, :log_file => cucumber_spork_log_file_name},
           ]
-        proc_infos.each do |proc_info|
+        @proc_infos.each do |proc_info|
           proc_info[:pid] = pid_from_file(proc_info[:pid_file], proc_info[:log_file])
         end
 
@@ -155,7 +155,7 @@ appendfsync no
           trace "DB DROP FORK run env: #{ENV['RAILS_ENV']} #{ENV['TEST_ENV_NUMBER']} parent pid: #{parent_pid}, my pid: #{Process.pid} -> " + `#{cmd}`
 
 
-          proc_infos.each do |proc_info|
+          @proc_infos.each do |proc_info|
             trace "DB DROP FORK before kill #{proc_info[:name]} env: #{ENV['RAILS_ENV']} #{ENV['TEST_ENV_NUMBER']} parent pid: #{parent_pid}, my pid: #{Process.pid}"
             kill_external_process_pid(proc_info[:pid], proc_info[:pid_file], proc_info[:log_file])
             trace "DB DROP FORK after killing #{proc_info[:name]} env: #{ENV['RAILS_ENV']} #{ENV['TEST_ENV_NUMBER']} parent pid: #{parent_pid}, my pid: #{Process.pid}"
@@ -262,6 +262,7 @@ appendfsync no
         trace "run_dependent_process inside thread runner: #{@runner_num} pid: #{pid_file_name}, log: #{log_file_name}"
         tries = 0
         loop do
+          break if @killing_spork && pid_file_name =~ /spork/
           tries += 1
           stop && break if tries > 10
           cmd = yield
@@ -433,6 +434,18 @@ appendfsync no
       return output
     end
 
+    def kill_spork
+      @killing_spork = true
+      killers = []
+      if @proc_infos
+        @proc_infos.select { |pi| pi[:name] =~ /spork/ }.each do |proc_info|
+          puts "#{Time.now} runner stop before kill #{proc_info[:name]} env: #{ENV['RAILS_ENV']} #{ENV['TEST_ENV_NUMBER']} my pid: #{Process.pid}"
+          kill_external_process_pid(proc_info[:pid], proc_info[:pid_file], proc_info[:log_file])
+          puts "#{Time.now} runner stop after killing #{proc_info[:name]} env: #{ENV['RAILS_ENV']} #{ENV['TEST_ENV_NUMBER']} my pid: #{Process.pid}"
+        end
+      end
+    end
+
     # Stop running
     def stop
       trace "Dropping test database #{ENV['TEST_ENV_NUMBER']}"
@@ -443,7 +456,9 @@ appendfsync no
 #       rescue Exception => e
 #         trace "Could not drop test database #{ENV['TEST_ENV_NUMBER']}: #{e}\n#{e.backtrace}"
 #       end
-      
+
+      kill_spork
+
       runner_end if @runner_began
       @runner_began = @running = false
       trace "About to close my io"
