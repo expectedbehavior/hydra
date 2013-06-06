@@ -218,14 +218,21 @@ appendfsync no
       if pid > 0
         trace "run_dependent_process before killing loop runner: #{@runner_num} pid: #{pid}, pid: #{pid_file_name}, log: #{log_file_name}"
         ["TERM", "KILL"].each do |signal|
-          tries = 20
+          tries = 2
           while(Process.kill(0, pid) rescue nil)
             trace "run_dependent_process before kill runner: #{@runner_num} pid: #{pid}, pid: #{pid_file_name}, log: #{log_file_name}"
-            Process.kill(signal, pid)
-            sleep 0.1
+            Process.kill(signal, pid) rescue nil
+            trace "run_dependent_process after kill runner: #{@runner_num} pid: #{pid}, pid: #{pid_file_name}, log: #{log_file_name}"
+            trace "run_dependent_process before wait runner: #{@runner_num} pid: #{pid}, pid: #{pid_file_name}, log: #{log_file_name}"
+            60.times do |i|
+              trace "run_dependent_process waiting runner: #{@runner_num} pid: #{pid}, pid: #{pid_file_name}, log: #{log_file_name}"
+              sleep 1
+              break unless (Process.kill(0, pid) rescue nil)
+            end
+            trace { "run_dependent_process after wait runner: #{@runner_num} pid: #{pid}, pid: #{pid_file_name}, log: #{log_file_name}\n#{`ps aux`}" }
             tries -= 1
             if tries == 0
-              raise "Could not kill previous process runner: #{@runner_num} pid: #{pid}, pid: #{pid_file_name}, log: #{log_file_name}" if signal == "KILL"
+              puts "Could not kill previous process runner: #{@runner_num} pid: #{pid}, pid: #{pid_file_name}, log: #{log_file_name}\n#{`ps aux`}" if signal == "KILL"
               break
             end
           end
