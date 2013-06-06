@@ -115,7 +115,7 @@ appendfsync no
           LOCK.synchronize do
             ENV['SPEC_SPORK_PORT'] = find_open_port.to_s
           end
-          "bin/spork RSpec -p #{ENV['SPEC_SPORK_PORT']}"
+          "script/hydra/spork_wrapper.rb RSpec -p #{ENV['SPEC_SPORK_PORT']}"
         end
 
 
@@ -125,7 +125,7 @@ appendfsync no
           LOCK.synchronize do
             ENV['CUCUMBER_SPORK_PORT'] = find_open_port.to_s
           end
-          "bin/spork Cucumber -p #{ENV['CUCUMBER_SPORK_PORT']}"
+          "script/hydra/spork_wrapper.rb Cucumber -p #{ENV['CUCUMBER_SPORK_PORT']}"
         end
 
         wait_for_processes_to_start('SPEC_SPORK_PORT', 'CUCUMBER_SPORK_PORT')
