@@ -16,6 +16,7 @@ module Hydra #:nodoc:
 
     # True if you want to see Hydra's message traces
     attr_accessor :verbose
+    attr_accessor :quiet
 
     # Path to the hydra config file.
     # If not set, it will check 'hydra.yml' and 'config/hydra.yml'
@@ -267,6 +268,7 @@ module Hydra #:nodoc:
     def initialize(name, command=nil)
       @name = name
       @command = command
+      @quiet = false
       yield self if block_given?
       @config = find_config_file
       if @config
@@ -286,7 +288,7 @@ module Hydra #:nodoc:
         workers = workers.select{|w| w['type'] == 'ssh'}
         @command = "RAILS_ENV=#{environment} rake #{@name}" unless @command
 
-        $stdout.write "==== Hydra Running #{@name} ====\n"
+        $stdout.write "==== Hydra Running #{@name} ====\n" unless @quiet
         Thread.abort_on_exception = true
         @listeners = []
         @results = {}
@@ -304,13 +306,13 @@ module Hydra #:nodoc:
           end
         end
         @listeners.each{|l| l.join}
-        $stdout.write "\n==== Hydra Running #{@name} COMPLETE ====\n\n"
-        $stdout.write @results.values.join("\n")
+        $stdout.write "\n==== Hydra Running #{@name} COMPLETE ====\n\n" unless @quiet
+        $stdout.write @results.values.join("\n") unless @quiet
       end
     end
 
     def run_command worker, command
-      $stdout.write "==== Hydra Running #{@name} on #{worker['connect']} ====\n"
+      $stdout.write "==== Hydra Running #{@name} on #{worker['connect']} ====\n" unless @quiet
       ssh_opts = worker.fetch('ssh_opts') { '' }
       writer, reader, error = popen3("ssh -tt #{ssh_opts} #{worker['connect']} ")
       writer.write("mkdir -p #{worker['directory']}\n")
@@ -330,7 +332,7 @@ module Hydra #:nodoc:
         if line =~ /echo END HYDRA$/
           ignoring = true
         end
-        $stdout.write "#{worker['connect']}: #{line}\n" unless ignoring
+        $stdout.write "#{worker['connect']}: #{line}\n" unless ignoring || @quiet
         if line == 'BEGIN HYDRA'
           ignoring = false
         end
