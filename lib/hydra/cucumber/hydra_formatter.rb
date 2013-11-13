@@ -20,6 +20,7 @@ module Hydra #:nodoc:
         print_snippets(@options)
         print_passing_wip(@options)
         @io.print('TEST_COMPLETED')
+        @io.flush
       end
 
       # no color
