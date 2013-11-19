@@ -226,7 +226,8 @@ module Hydra #:nodoc:
               if worker[:shutdown]
                 Thread.exit # ignore and exit silently
               else
-                raise "Lost Worker [#{worker.inspect}] #{$!.message}\n#{$!.backtrace}"
+                puts  "\n\nError: Lost Worker [#{worker.inspect}] #{$!.message}\n#{$!.backtrace}\n\n"
+                exit 2
               end
             end
           end
